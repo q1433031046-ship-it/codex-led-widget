@@ -1,0 +1,25 @@
+# Changelog
+
+## 1.0.0 - 2026-08-27
+
+- Added freely resizable orb and horizontal/vertical battery meters.
+- Added smooth quota-aware liquid, particle, bubble, highlight, and color transitions.
+- Added a remembered switch between adaptive quota colors and a fixed cyan theme.
+- Added unified 5-hour-driven colors or independent per-module quota colors.
+- Added true diagonal resizing for meters and cards, with both dimensions persisted.
+- Added independently configurable 5-hour and 7-day usage charts.
+- Added local daily, weekly, lifetime quota and Token statistics.
+- Added per-model token attribution and dynamically refreshed official model pricing for input, cached input, cache writes, and output.
+- Added a dedicated model and price settings panel with Codex model rescanning, official-price refresh, persistent manual overrides, restore-to-official behavior, and an extensible pricing-provider interface.
+- Added USD/CNY API-equivalent cost estimates without a hardcoded model price or exchange-rate fallback.
+- Added a redesigned usage calendar with a large single-month grid, an infinitely extendable horizontally draggable multi-month timeline that stays seamless across years, current-month focus, 12 large yearly month summaries, an optional full-year daily grid, hover details, and four switchable units.
+- Kept chart history recording and persisted while charts are hidden or the app is restarted.
+- Added instant statistics-page startup from a persisted snapshot and one shared 60-second background refresh.
+- Added persistent window position, size, layout, order, and display preferences.
+- Added optional four-edge magnetic docking with corner hysteresis, multi-display work-area awareness, immediate pointer-leave retraction, hover expansion, automatic left/right meter placement, and a meter-only horizontal-battery mode.
+- Prevented repeated launches or startup-shortcut activation from opening duplicate widget windows.
+- Stopped repeated identical magnet-geometry reports from restarting the dock animation and causing one-pixel jitter on scaled displays.
+- Mirrored the meter/card grid widths correctly on left docking and added persisted Auto, Meter Left, and Meter Right layout choices.
+- Added a one-click master visibility switch that preserves individual card selections, plus adaptive meter sizing when the meter is displayed without cards.
+- Reorganized the tray/context menus, removed calendar controls duplicated by the statistics subpage, and automatically reopened the active submenu while changing repeated toggle options.
+- Prevented month navigation from needlessly rerendering the floating widget and raised the calendar drag threshold to avoid small click-time shifts.

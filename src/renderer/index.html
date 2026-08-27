@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Codex LED Widget</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-state="loading">
+    <main id="widget" class="widget" data-layout="regular">
+      <div class="ambient ambient-a"></div>
+      <div class="ambient ambient-b"></div>
+
+      <span id="trafficLight" class="sr-only loading" aria-hidden="true"></span>
+      <span id="brandName" class="sr-only">Codex 额度</span>
+      <span id="stateText" class="sr-only">读取中</span>
+      <span id="planLabel" class="sr-only">计划</span>
+
+      <section id="summaryContent" class="content">
+        <div id="liquidMeter" class="liquid-meter" aria-label="Codex 剩余额度">
+          <div class="glass-rim"></div>
+          <div id="liquidFill" class="liquid-fill">
+            <div id="particleField" class="particle-field" aria-hidden="true"></div>
+          </div>
+          <div id="surfaceParticleField" class="surface-particle-field" aria-hidden="true"></div>
+          <div class="shine"></div>
+          <div class="meter-copy">
+            <strong id="remaining">--%</strong>
+            <span id="remainingLabel">剩余</span>
+          </div>
+          <div class="meter-resize-handle edge-left" data-edge="left" title="左右拖动调整仪表宽度" aria-hidden="true"></div>
+          <div class="meter-resize-handle edge-right" data-edge="right" title="左右拖动调整仪表宽度" aria-hidden="true"></div>
+          <div class="meter-resize-handle edge-top" data-edge="top" title="上下拖动调整仪表高度" aria-hidden="true"></div>
+          <div class="meter-resize-handle edge-bottom" data-edge="bottom" title="上下拖动调整仪表高度" aria-hidden="true"></div>
+          <div class="meter-resize-handle corner-top-left" data-edge="top-left" title="斜向拖动调整仪表宽高" aria-hidden="true"></div>
+          <div class="meter-resize-handle corner-top-right" data-edge="top-right" title="斜向拖动调整仪表宽高" aria-hidden="true"></div>
+          <div class="meter-resize-handle corner-bottom-left" data-edge="bottom-left" title="斜向拖动调整仪表宽高" aria-hidden="true"></div>
+          <div class="meter-resize-handle corner-bottom-right" data-edge="bottom-right" title="斜向拖动调整仪表宽高" aria-hidden="true"></div>
+        </div>
+
+        <div id="columnResizeHandle" class="column-resize-handle" title="左右拖动调整仪表和卡片宽度" aria-hidden="true"></div>
+
+        <div id="quotaPanel" class="quota-panel">
+          <div id="primaryCard" class="quota-card primary">
+            <div class="quota-card-head">
+              <span id="primaryLabel">5小时额度</span>
+              <strong id="primaryPercent">--%</strong>
+            </div>
+            <span id="primaryReset" class="quota-reset">--</span>
+            <div class="quota-track"><span id="primaryBar"></span></div>
+            <section id="primaryUsageChart" class="usage-chart" hidden aria-label="5小时额度消耗趋势">
+              <header class="chart-header">
+                <strong id="primaryChartTitle">5小时消耗</strong>
+                <div class="chart-legend" aria-hidden="true">
+                  <span class="legend-theory">理论</span>
+                  <span class="legend-actual">实际</span>
+                </div>
+              </header>
+              <canvas id="primaryUsageCanvas"></canvas>
+            </section>
+            <div class="card-resize-handle" data-card="primary" title="拖动调整卡片高度" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-top-left" data-card="primary" data-corner="top-left" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-top-right" data-card="primary" data-corner="top-right" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-bottom-left" data-card="primary" data-corner="bottom-left" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-bottom-right" data-card="primary" data-corner="bottom-right" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+          </div>
+          <div id="secondaryCard" class="quota-card">
+            <div class="quota-card-head">
+              <span id="secondaryLabel">7天总额度</span>
+              <strong id="secondaryPercent">--%</strong>
+            </div>
+            <span id="secondaryReset" class="quota-reset">--</span>
+            <div class="quota-track"><span id="secondaryBar"></span></div>
+            <section id="secondaryUsageChart" class="usage-chart" hidden aria-label="7天额度消耗趋势">
+              <header class="chart-header">
+                <strong id="secondaryChartTitle">7天消耗</strong>
+                <div class="chart-legend" aria-hidden="true">
+                  <span class="legend-theory">理论</span>
+                  <span class="legend-actual">实际</span>
+                </div>
+              </header>
+              <canvas id="secondaryUsageCanvas"></canvas>
+            </section>
+            <div class="card-resize-handle" data-card="secondary" title="拖动调整卡片高度" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-top-left" data-card="secondary" data-corner="top-left" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-top-right" data-card="secondary" data-corner="top-right" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-bottom-left" data-card="secondary" data-corner="bottom-left" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-bottom-right" data-card="secondary" data-corner="bottom-right" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+          </div>
+          <div id="quotaStatsCard" class="quota-card quota-stats-card">
+            <div id="quotaStatsGrid" class="quota-stats-grid">
+              <div class="quota-stat-metric" data-stat-key="todayPrimary">
+                <span data-stat-label>今日5小时</span><strong data-stat-value>--%</strong>
+              </div>
+              <div class="quota-stat-metric" data-stat-key="todayTotal">
+                <span data-stat-label>今日消耗总额度</span><strong data-stat-value>--%</strong>
+              </div>
+              <div class="quota-stat-metric" data-stat-key="weekPrimary">
+                <span data-stat-label>本周5小时消耗</span><strong data-stat-value>--%</strong>
+              </div>
+              <div class="quota-stat-metric" data-stat-key="lifetimeTotal">
+                <span data-stat-label>累计总额度</span><strong data-stat-value>--%</strong>
+              </div>
+            </div>
+            <div class="card-resize-handle" data-card="stats" title="拖动调整卡片高度" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-top-left" data-card="stats" data-corner="top-left" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-top-right" data-card="stats" data-corner="top-right" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-bottom-left" data-card="stats" data-corner="bottom-left" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-bottom-right" data-card="stats" data-corner="bottom-right" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+          </div>
+          <div id="tokenCard" class="quota-card token-card">
+            <div class="token-metrics">
+              <div id="tokenTodayRow" class="token-metric">
+                <span id="tokenTodayLabel">今天</span>
+                <strong id="tokenToday">--</strong>
+                <small id="tokenTodayUsd" class="token-money" hidden></small>
+              </div>
+              <div id="tokenWeekRow" class="token-metric">
+                <span id="tokenWeekLabel">本周</span>
+                <strong id="tokenWeek">--</strong>
+                <small id="tokenWeekUsd" class="token-money" hidden></small>
+              </div>
+              <div id="tokenLifetimeRow" class="token-metric">
+                <span id="tokenLifetimeLabel">累计</span>
+                <strong id="tokenLifetime">--</strong>
+                <small id="tokenLifetimeUsd" class="token-money" hidden></small>
+              </div>
+            </div>
+            <div class="card-resize-handle" data-card="token" title="拖动调整卡片高度" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-top-left" data-card="token" data-corner="top-left" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-top-right" data-card="token" data-corner="top-right" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-bottom-left" data-card="token" data-corner="bottom-left" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+            <div class="card-corner-resize-handle corner-bottom-right" data-card="token" data-corner="bottom-right" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="bottom-bar">
+        <div class="status">
+          <span id="statusDot" class="status-dot loading"></span>
+          <strong id="planText" class="plan-text">--</strong>
+          <span id="statusText">正在读取 Codex 额度...</span>
+        </div>
+        <div class="window-actions">
+          <button id="langBtn" class="text-button" title="Language" aria-label="Language">EN</button>
+          <button id="pinBtn" class="icon-button active" title="取消置顶" aria-label="取消置顶">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6-3 1-4 4v4l-2 2-2-6-6-2 2-2h4l4-4 1-3z" /></svg>
+          </button>
+          <button id="refreshBtn" class="icon-button" title="刷新" aria-label="刷新">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-13.7 5.7M4 12A8 8 0 0 1 17.7 6.3M17 3v4h-4M7 21v-4h4" /></svg>
+          </button>
+          <button id="minimizeBtn" class="icon-button" title="隐藏" aria-label="隐藏">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
+          </button>
+          <button id="closeBtn" class="icon-button danger" title="退出" aria-label="退出">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+      </footer>
+    </main>
+
+    <script>
+      if (!window.codexQuota && new URLSearchParams(location.search).has("preview")) {
+        const previewParams = new URLSearchParams(location.search);
+        const previewChartSource = ["primary", "secondary", "both"].includes(previewParams.get("chart")) ? previewParams.get("chart") : "primary";
+        const previewRemaining = Math.max(0, Math.min(100, Number(previewParams.get("remaining")) || 77));
+        let previewQuotaCalls = 0;
+        window.codexQuota = {
+          getQuota: async () => {
+            previewQuotaCalls += 1;
+            if (previewParams.has("failAfterFirst") && previewQuotaCalls > 1) throw new Error("Preview refresh failure");
+            const now = Date.now();
+            const primaryReset = new Date(now + 3.4 * 3600000).toISOString();
+            const secondaryReset = new Date(now + 6.7 * 86400000).toISOString();
+            return {
+              planType: "plus",
+              remainingPercent: previewRemaining,
+              fetchedAt: new Date().toISOString(),
+              primary: { usedPercent: 100 - previewRemaining, remainingPercent: previewRemaining, windowDurationMins: 300, resetsAt: primaryReset },
+              secondary: { usedPercent: 4, remainingPercent: 96, windowDurationMins: 10080, resetsAt: secondaryReset },
+              tokenUsage: { todayTokens: 1842000, weekTokens: 135758008, lifetimeTokens: 1135127724, todaySource: "local" },
+              modelUsage: {
+                periods: {
+                  today: { usage: { totalTokens: 1842000 }, costUsd: 8.42, pricedTokens: 1842000, unpricedTokens: 0 },
+                  week: { usage: { totalTokens: 135758008 }, costUsd: 462.18, pricedTokens: 135758008, unpricedTokens: 0 },
+                  lifetime: { usage: { totalTokens: 1135127724 }, costUsd: 3850.42, pricedTokens: 1135127724, unpricedTokens: 0 }
+                }
+              },
+              exchangeRate: { usdCny: 7.2, date: "2026-08-26", source: "Frankfurter" },
+              quotaStats: { todayPrimary: 38, todayTotal: 42, weekPrimary: 246, lifetimeTotal: 735, lastCompletedPrimaryUsed: 52, lastCompletedSecondaryUsed: 31, trackingStartedAt: new Date(now - 12 * 86400000).toISOString() },
+              usageHistory: {
+                primary: [
+                  { at: now - 80 * 60000, usedPercent: 8, resetsAt: primaryReset },
+                  { at: now - 45 * 60000, usedPercent: 15, resetsAt: primaryReset },
+                  { at: now, usedPercent: 23, resetsAt: primaryReset }
+                ],
+                secondary: [
+                  { at: now - 18 * 3600000, usedPercent: 2, resetsAt: secondaryReset },
+                  { at: now, usedPercent: 4, resetsAt: secondaryReset }
+                ]
+              }
+            };
+          },
+          getAlwaysOnTop: async () => true,
+          setAlwaysOnTop: async (value) => Boolean(value),
+          getDisplayPreferences: async () => ({
+            alwaysOnTop: true,
+            primaryCardEnabled: true,
+            secondaryCardEnabled: true,
+            cardsMasterEnabled: !previewParams.has("noCards"),
+            meterEnabled: true,
+            meterSource: "primary",
+            meterStyle: previewParams.get("meter") === "battery" ? "battery" : "circle",
+            batteryOrientation: previewParams.get("battery") === "vertical" ? "vertical" : "horizontal",
+            magneticEnabled: previewParams.has("magnetic"),
+            meterSideMode: ["left", "right"].includes(previewParams.get("meterSide")) ? previewParams.get("meterSide") : "auto",
+            adaptiveColorEnabled: !previewParams.has("fixedColor"),
+            colorMode: previewParams.has("independentColor") ? "independent" : "unified",
+            primaryChartEnabled: previewParams.has("chart") && previewChartSource !== "secondary",
+            secondaryChartEnabled: previewParams.has("chart") && previewChartSource !== "primary",
+            primaryShowUsed: !previewParams.has("noCopy"),
+            primaryValueMode: previewParams.get("primaryValue") === "remaining" ? "remaining" : "used",
+            primaryShowRemaining: !previewParams.has("noCopy"),
+            secondaryShowUsed: !previewParams.has("noCopy"),
+            secondaryShowRemaining: !previewParams.has("noCopy"),
+            primaryShowResetTime: !previewParams.has("noReset"),
+            primaryShowCountdown: false,
+            secondaryShowResetTime: false,
+            secondaryShowCountdown: !previewParams.has("noReset"),
+            tokenPanelEnabled: true,
+            tokenShowToday: true,
+            tokenShowWeek: true,
+            tokenShowLifetime: true,
+            tokenShowUsd: false,
+            tokenShowCny: false,
+            calendarEnabled: true,
+            calendarUnit: "quota",
+            calendarRange: "month",
+            calendarMonthStyle: "multi",
+            calendarCursor: null,
+            calendarYearStyle: "months",
+            quotaStatsPanelEnabled: previewParams.has("stats"),
+            quotaStatVisibility: { lifetimeTotal: true, todayTotal: true, weekPrimary: true, todayPrimary: true },
+            quotaStatOrder: previewParams.has("legacy")
+              ? ["todayPrimary", "weekPrimary", "weekTotal", "lifetimeTotal"]
+              : ["todayPrimary", "todayTotal", "weekPrimary", "lifetimeTotal"],
+            cardSizing: { primary: 1, secondary: 1, stats: 1, token: 1 },
+            columnSizing: { meterRatio: 0.34 },
+            meterSizing: {
+              circle: { width: null, height: null },
+              batteryHorizontal: { width: null, height: null },
+              batteryVertical: { width: null, height: null }
+            }
+          }),
+          getMagnetState: async () => {
+            const edge = ["left", "right", "top", "bottom"].includes(previewParams.get("magnetEdge"))
+              ? previewParams.get("magnetEdge")
+              : null;
+            return {
+              enabled: previewParams.has("magnetic"),
+              edge,
+              expanded: true,
+              meterSide: ["left", "right"].includes(previewParams.get("meterSide"))
+                ? previewParams.get("meterSide")
+                : edge === "left" ? "right" : "left"
+            };
+          },
+          reportMagnetGeometry: () => {},
+          setCardSizing: async (value) => value,
+          setMeterSizing: async (value) => value,
+          setColumnSizing: async (value) => value,
+          showContextMenu: () => {},
+          minimize: () => {},
+          close: () => {},
+          onRefresh: () => {},
+          onQuotaUpdated: () => {},
+          onQuotaRefreshFailed: () => {},
+          onDisplayPreferencesChanged: () => {},
+          onMagnetStateChanged: () => {},
+          onToggleLanguage: () => {},
+          onAlwaysOnTopChanged: () => {}
+        };
+      }
+    </script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

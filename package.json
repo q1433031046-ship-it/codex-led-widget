@@ -1,0 +1,55 @@
+{
+  "name": "codex-led-widget",
+  "version": "1.0.0",
+  "description": "A customizable Windows desktop widget for Codex quota, usage history, costs, and calendar insights.",
+  "main": "src/main/main.js",
+  "author": "Codex Quota Widget Contributors",
+  "license": "MIT",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xicunwus2025-sys/codex-led-widget.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xicunwus2025-sys/codex-led-widget/issues"
+  },
+  "homepage": "https://github.com/xicunwus2025-sys/codex-led-widget#readme",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "test": "node scripts/test-sticky-menu.js && node scripts/test-calendar-ranges.js && node scripts/test-color-mode.js && node scripts/test-model-usage.js && node scripts/test-model-pricing.js && node scripts/test-token-consistency.js && node scripts/test-corner-resize.js && node scripts/test-history-persistence.js && node scripts/test-settings-stability.js && node scripts/test-magnetic-docking.js",
+    "build": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win portable",
+    "release": "npm run build",
+    "build:dir": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --dir"
+  },
+  "build": {
+    "appId": "cn.codex.quota.widget",
+    "productName": "Codex LED Widget",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "Codex-LED-Widget-v${version}-Windows-x64.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  }
+}

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Codex 额度统计</title>
+    <link rel="stylesheet" href="./stats.css" />
+  </head>
+  <body data-state="loading">
+    <main class="stats-shell">
+      <header class="titlebar">
+        <div>
+          <strong id="pageTitle">额度统计</strong>
+          <span id="statusText">正在读取…</span>
+        </div>
+        <nav>
+          <button id="languageButton" type="button">EN</button>
+          <button id="refreshButton" type="button" aria-label="刷新">↻</button>
+          <button id="closeButton" type="button" aria-label="关闭">×</button>
+        </nav>
+      </header>
+
+      <div class="scroll-area">
+        <section class="section quota-section">
+          <div class="section-heading">
+            <h2 id="quotaHeading">额度用量</h2>
+            <small id="trackingSince"></small>
+          </div>
+          <div id="quotaMetricGrid" class="metric-grid quota-grid">
+            <article class="metric-card" data-stat-key="todayPrimary"><span data-label>今日5小时</span><strong data-value>--%</strong></article>
+            <article class="metric-card" data-stat-key="todayTotal"><span data-label>今日消耗总额度</span><strong data-value>--%</strong></article>
+            <article class="metric-card" data-stat-key="weekPrimary"><span data-label>本周5小时消耗</span><strong data-value>--%</strong></article>
+            <article class="metric-card" data-stat-key="lifetimeTotal"><span data-label>累计总额度</span><strong data-value>--%</strong></article>
+          </div>
+        </section>
+
+        <section id="calendarSection" class="section calendar-section">
+          <div class="section-heading calendar-heading">
+            <div>
+              <h2 id="calendarHeading">消耗日历</h2>
+              <small id="calendarSummary"></small>
+            </div>
+          </div>
+          <div class="calendar-toolbar">
+            <div class="range-controls" role="group" aria-label="日历显示范围">
+              <button type="button" data-calendar-range="month">月</button>
+              <button type="button" data-calendar-range="year">年</button>
+            </div>
+            <div id="monthStyleControls" class="month-style-controls" role="group" aria-label="月份显示方式">
+              <button type="button" data-calendar-month-style="single">单月</button>
+              <button type="button" data-calendar-month-style="multi">多月</button>
+            </div>
+            <div id="yearStyleControls" class="year-style-controls" role="group" aria-label="全年显示方式" hidden>
+              <button type="button" data-calendar-year-style="months">12个月</button>
+              <button type="button" data-calendar-year-style="days">每日</button>
+            </div>
+            <div class="period-controls">
+              <button id="previousPeriodButton" type="button" aria-label="上一时期">‹</button>
+              <input id="calendarMonthPicker" type="month" aria-label="选择月份" />
+              <strong id="calendarYearLabel" hidden></strong>
+              <button id="nextPeriodButton" type="button" aria-label="下一时期">›</button>
+            </div>
+            <div id="calendarUnitControls" class="unit-controls" role="group" aria-label="日历计量单位">
+              <button type="button" data-calendar-unit="quota">%</button>
+              <button type="button" data-calendar-unit="tokens">Token</button>
+              <button type="button" data-calendar-unit="usd">$</button>
+              <button type="button" data-calendar-unit="cny">¥</button>
+            </div>
+          </div>
+          <div class="calendar-frame">
+            <div class="weekday-labels" aria-hidden="true"><span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span>日</span></div>
+            <div class="calendar-scroll">
+              <div id="calendarTimelineLabels" class="calendar-timeline-labels" hidden></div>
+              <div id="calendarGrid" class="calendar-grid" role="grid" aria-label="每日消耗"></div>
+            </div>
+          </div>
+          <div class="calendar-footer">
+            <span id="calendarHint">最近一年 · 鼠标停留查看详情</span>
+            <div class="calendar-legend" aria-hidden="true"><span id="lessLabel">少</span><i data-level="0"></i><i data-level="1"></i><i data-level="2"></i><i data-level="3"></i><i data-level="4"></i><span id="moreLabel">多</span></div>
+          </div>
+        </section>
+
+        <section class="section current-section">
+          <h2 id="currentHeading">当前周期</h2>
+          <div class="window-grid">
+            <article class="window-card">
+              <span id="primaryWindowLabel">5小时</span>
+              <strong id="primaryWindowValue">--</strong>
+              <div class="track"><i id="primaryWindowBar"></i></div>
+            </article>
+            <article class="window-card">
+              <span id="secondaryWindowLabel">7天</span>
+              <strong id="secondaryWindowValue">--</strong>
+              <div class="track"><i id="secondaryWindowBar"></i></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section token-section">
+          <h2 id="tokenHeading">Token 与金额</h2>
+          <div class="metric-grid token-grid">
+            <article id="todayTokenCard" class="metric-card token-stat"><span id="todayTokenLabel">今天</span><strong id="todayTokenValue">--</strong><small id="todayTokenMoney"></small></article>
+            <article id="weekTokenCard" class="metric-card token-stat"><span id="weekTokenLabel">本周</span><strong id="weekTokenValue">--</strong><small id="weekTokenMoney"></small></article>
+            <article id="lifetimeTokenCard" class="metric-card token-stat"><span id="lifetimeTokenLabel">累计</span><strong id="lifetimeTokenValue">--</strong><small id="lifetimeTokenMoney"></small></article>
+          </div>
+        </section>
+
+        <section class="section model-section">
+          <div class="section-heading">
+            <div>
+              <h2 id="modelHeading">按模型消耗</h2>
+              <small id="pricingStatus"></small>
+            </div>
+            <button id="pricingSettingsButton" class="text-button" type="button">模型与价格设置</button>
+          </div>
+          <div class="model-table" role="table" aria-label="按模型消耗">
+            <div class="model-row model-header" role="row">
+              <span id="modelColumnModel">模型</span><span id="modelColumnToday">今天</span><span id="modelColumnWeek">本周</span><span id="modelColumnTracked">已记录累计</span><span id="modelColumnCost">API 等值费用</span>
+            </div>
+            <div id="modelRows" class="model-rows"></div>
+          </div>
+          <small id="modelCoverage" class="model-coverage"></small>
+          <div id="pricingSettingsPanel" class="pricing-settings-panel" hidden>
+            <header>
+              <div><strong id="pricingSettingsTitle">模型与价格设置</strong><small id="pricingSettingsHint">单价单位：美元 / 100万 Token</small></div>
+              <button id="pricingSettingsCloseButton" type="button" aria-label="关闭设置">×</button>
+            </header>
+            <div class="pricing-settings-actions">
+              <button id="rescanModelsButton" type="button">重新扫描模型</button>
+              <button id="refreshPricesButton" type="button">刷新官方价格</button>
+              <span id="pricingSettingsStatus"></span>
+            </div>
+            <div class="price-editor-head" aria-hidden="true">
+              <span id="priceColumnModel">模型</span><span id="priceColumnInput">输入</span><span id="priceColumnCached">缓存输入</span><span id="priceColumnWrite">缓存写入</span><span id="priceColumnOutput">输出</span><span></span>
+            </div>
+            <div id="priceEditorRows" class="price-editor-rows"></div>
+            <small id="manualPriceNotice" class="manual-price-notice">手动价格会保存在本机；恢复官方后才会继续自动更新该模型。</small>
+          </div>
+        </section>
+      </div>
+    </main>
+    <div id="calendarTooltip" class="calendar-tooltip" role="tooltip" hidden></div>
+    <script>
+      if (!window.codexQuota && new URLSearchParams(location.search).has("preview")) {
+        const now = Date.now();
+        window.codexQuota = {
+          getQuota: async () => ({
+            fetchedAt: new Date().toISOString(),
+            primary: { usedPercent: 58, remainingPercent: 42 },
+            secondary: { usedPercent: 31, remainingPercent: 69 },
+            quotaStats: {
+              todayPrimary: 138,
+              todayTotal: 31,
+              weekPrimary: 642,
+              lifetimeTotal: 418,
+              trackingStartedAt: new Date(now - 120 * 86400000).toISOString(),
+              dailyUsage: Array.from({ length: 120 }, (_, index) => ({
+                date: new Date(now - (119 - index) * 86400000).toISOString().slice(0, 10),
+                primaryPercent: (index * 17) % 91,
+                totalPercent: index % 6 === 0 ? 0 : (index * 7) % 34
+              }))
+            },
+            tokenUsage: {
+              todayTokens: 1842000,
+              weekTokens: 135758008,
+              lifetimeTokens: 1135127724,
+              dailyUsageBuckets: Array.from({ length: 120 }, (_, index) => ({
+                date: new Date(now - (119 - index) * 86400000).toISOString().slice(0, 10),
+                tokens: index % 6 === 0 ? 0 : 250000 + ((index * 97163) % 4800000)
+              }))
+            },
+            modelUsage: {
+              trackingStartedAt: new Date(now - 120 * 86400000).toISOString(),
+              periods: {
+                today: { usage: { totalTokens: 1764000 }, costUsd: 8.42, pricedTokens: 1764000, unpricedTokens: 78000 },
+                week: { usage: { totalTokens: 94200000 }, costUsd: 384.25, pricedTokens: 93200000, unpricedTokens: 1000000 },
+                lifetime: { usage: { totalTokens: 684000000 }, costUsd: 2614.78, pricedTokens: 678000000, unpricedTokens: 6000000 }
+              },
+              models: [
+                { model: "gpt-5.6-sol", today: { totalTokens: 1686000 }, week: { totalTokens: 93200000 }, lifetime: { totalTokens: 678000000 }, costs: { lifetime: { costUsd: 2614.78 } }, price: { status: "current" } },
+                { model: "codex-auto-review", today: { totalTokens: 78000 }, week: { totalTokens: 1000000 }, lifetime: { totalTokens: 6000000 }, costs: { lifetime: { costUsd: null } }, price: { status: "unavailable" } }
+              ],
+              daily: Array.from({ length: 120 }, (_, index) => ({ date: new Date(now - (119 - index) * 86400000).toISOString().slice(0, 10), costUsd: index % 6 === 0 ? 0 : 0.9 + ((index * 13) % 90) / 10 })),
+              pricing: { updatedAt: new Date().toISOString(), hasUnavailableModels: true, hasStaleModels: false }
+            },
+            exchangeRate: { usdCny: 7.2 }
+          }),
+          getDisplayPreferences: async () => ({
+            quotaStatOrder: ["todayPrimary", "todayTotal", "weekPrimary", "lifetimeTotal"],
+            quotaStatVisibility: { todayPrimary: true, todayTotal: true, weekPrimary: true, lifetimeTotal: true },
+            tokenShowToday: true,
+            tokenShowWeek: true,
+            tokenShowLifetime: true,
+            tokenShowUsd: true,
+            tokenShowCny: true,
+            adaptiveColorEnabled: true,
+            colorMode: "independent",
+            calendarEnabled: true,
+            calendarUnit: "quota",
+            calendarRange: "month",
+            calendarMonthStyle: new URLSearchParams(location.search).has("singleMonth") ? "single" : "multi",
+            calendarCursor: null,
+            calendarYearStyle: "months"
+          }),
+          setCalendarPreferences: async (value) => value,
+          getPricingSettings: async () => ({
+            updatedAt: new Date().toISOString(),
+            models: [
+              { model: "gpt-5.6-sol", status: "current", trackedTokens: 678000000, rates: { inputUsdPerMillion: 4, cachedInputUsdPerMillion: 0.4, cacheWriteInputUsdPerMillion: 5, outputUsdPerMillion: 20 } },
+              { model: "codex-auto-review", status: "unavailable", trackedTokens: 6000000, rates: { inputUsdPerMillion: null, cachedInputUsdPerMillion: null, cacheWriteInputUsdPerMillion: null, outputUsdPerMillion: null } }
+            ]
+          }),
+          refreshPricingSettings: async () => window.codexQuota.getPricingSettings(),
+          setManualModelPrice: async () => window.codexQuota.getPricingSettings(),
+          restoreOfficialModelPrice: async () => window.codexQuota.getPricingSettings(),
+          closeStats: () => {},
+          showContextMenu: () => {},
+          onDisplayPreferencesChanged: () => {},
+          onRefresh: () => {},
+          onQuotaUpdated: () => {},
+          onQuotaRefreshFailed: () => {},
+          onToggleLanguage: () => {}
+        };
+      }
+    </script>
+    <script src="./stats.js"></script>
+  </body>
+</html>
