@@ -78,7 +78,7 @@ pnpm run release
 
 ## GitHub 发布
 
-仓库已包含 Release 工作流。推送 `v*` 标签后，GitHub Actions 会在 Windows 环境构建程序，并把唯一的 `.exe` 自动加入对应 Release。
+正式版本由维护者在本地完成检查和构建，再将唯一的 Windows `.exe` 上传到 GitHub Releases。
 
 ```powershell
 git tag v1.0.0
@@ -92,7 +92,6 @@ assets/                  screenshots
 src/main/                Electron main process and local quota service
 src/renderer/            widget and statistics UI
 scripts/                 visual and behavior checks
-.github/workflows/       GitHub Release automation
 ```
 
 ## 开源协议
