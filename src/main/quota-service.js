@@ -99,6 +99,41 @@ function normalizeAccountUsage(accountUsage, localTodayTokens = null) {
   };
 }
 
+function mergeTokenUsageSnapshot(nextUsage, previousUsage, options = {}) {
+  const next = nextUsage && typeof nextUsage === "object" ? nextUsage : {};
+  const previous = previousUsage && typeof previousUsage === "object" ? previousUsage : {};
+  const now = options.now instanceof Date ? options.now : new Date();
+  const previousFetchedAt = new Date(options.previousFetchedAt || "");
+  const sameDay = Number.isFinite(previousFetchedAt.getTime()) && localDateKey(previousFetchedAt) === localDateKey(now);
+  const nextBuckets = Array.isArray(next.dailyUsageBuckets) ? next.dailyUsageBuckets : [];
+  const previousBuckets = Array.isArray(previous.dailyUsageBuckets) ? previous.dailyUsageBuckets : [];
+  const dailyUsageBuckets = nextBuckets.length ? nextBuckets : previousBuckets;
+  const nextToday = safeTokenCount(next.todayTokens);
+  const previousToday = sameDay ? safeTokenCount(previous.todayTokens) : null;
+  const todayTokens = nextToday ?? previousToday;
+  const today = localDateKey(now);
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const weekStartKey = localDateKey(weekStart);
+  const settledWeekWithoutToday = dailyUsageBuckets
+    .filter((bucket) => bucket?.date >= weekStartKey && bucket?.date < today)
+    .reduce((sum, bucket) => sum + (safeTokenCount(bucket?.tokens) || 0), 0);
+  const calculatedWeek = todayTokens === null && settledWeekWithoutToday === 0
+    ? null
+    : settledWeekWithoutToday + (todayTokens || 0);
+
+  return {
+    ...previous,
+    ...next,
+    todayTokens,
+    todaySource: nextToday !== null ? next.todaySource : previousToday !== null ? previous.todaySource : "unavailable",
+    weekTokens: safeTokenCount(next.weekTokens) ?? calculatedWeek,
+    lifetimeTokens: safeTokenCount(next.lifetimeTokens) ?? safeTokenCount(previous.lifetimeTokens),
+    peakDailyTokens: safeTokenCount(next.peakDailyTokens) ?? safeTokenCount(previous.peakDailyTokens),
+    dailyUsageBuckets
+  };
+}
+
 function safeTokenCount(value) {
   if (value === null || value === undefined) return null;
   const count = Number(value);
@@ -266,4 +301,4 @@ function handleMessage(line, pending) {
   }
 }
 
-module.exports = { getQuota, normalizeSnapshot, normalizeAccountUsage };
+module.exports = { getQuota, normalizeSnapshot, normalizeAccountUsage, mergeTokenUsageSnapshot };

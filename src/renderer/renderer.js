@@ -97,6 +97,7 @@ const copy = {
     noPrevious: "暂无上轮记录",
     localRealtime: "本机实时统计",
     apiEstimate: "按各模型的 OpenAI 官方输入、缓存与输出价格动态估算",
+    priced: "已计价",
     pricePending: "价格待更新",
     ratePending: "汇率待更新",
     pin: "置顶",
@@ -141,6 +142,7 @@ const copy = {
     noPrevious: "No previous cycle",
     localRealtime: "Local real-time count",
     apiEstimate: "Estimated from each model's current official input, cached-input, and output rates",
+    priced: "priced",
     pricePending: "Price pending",
     ratePending: "Rate pending",
     pin: "Pin",
@@ -476,7 +478,7 @@ function formatTokenCount(value) {
   return formatter.format(count);
 }
 
-function formatMoneyEstimate(period) {
+function formatMoneyEstimate(period, totalTokens) {
   const estimate = lastQuota?.modelUsage?.periods?.[period];
   const dollars = Number(estimate?.costUsd);
   const trackedTokens = Number(estimate?.usage?.totalTokens);
@@ -497,8 +499,10 @@ function formatMoneyEstimate(period) {
       parts.push(text().ratePending);
     }
   }
-  const prefix = Number(estimate?.unpricedTokens) > 0 ? "≥ " : "≈ ";
-  return parts.length ? `${prefix}${parts.join(" / ")}` : "";
+  const displayedTokens = Number(totalTokens);
+  const partial = Number(estimate?.unpricedTokens) > 0 || (Number.isFinite(displayedTokens) && displayedTokens > Number(estimate?.pricedTokens));
+  const amount = parts.length ? `${partial ? "≥ " : "≈ "}${parts.join(" / ")}` : "";
+  return partial ? `${text().priced} ${formatTokenCount(estimate.pricedTokens)} · ${amount}` : amount;
 }
 
 function renderTokenUsage() {
@@ -514,7 +518,7 @@ function renderTokenUsage() {
     valueElement.title = Number.isFinite(Number(value)) ? Number(value).toLocaleString("en-US") : "";
     const moneyEnabled = displayPreferences.tokenShowUsd || displayPreferences.tokenShowCny;
     usdElement.hidden = !moneyEnabled;
-    usdElement.textContent = moneyEnabled ? formatMoneyEstimate(period) : "";
+    usdElement.textContent = moneyEnabled ? formatMoneyEstimate(period, value) : "";
     const rate = Number(lastQuota?.exchangeRate?.usdCny);
     usdElement.title = Number.isFinite(rate) ? `${text().apiEstimate} · USD/CNY ${rate.toFixed(4)}` : text().apiEstimate;
   }

@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen, net } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
-const { getQuota } = require("./quota-service");
+const { getQuota, mergeTokenUsageSnapshot } = require("./quota-service");
 const { createModelUsageService } = require("./model-usage-service");
 const { createModelPriceService, enrichModelUsage } = require("./model-price-service");
 const {
@@ -912,7 +912,10 @@ async function refreshQuotaSnapshot() {
       ]);
       recordUsageSnapshot(quota);
       recordQuotaStatsSnapshot(quota);
-      lastQuotaPayload = applyTrackedTokenFallback({ ...quota, exchangeRate });
+      const tokenUsage = mergeTokenUsageSnapshot(quota.tokenUsage, lastQuotaPayload?.tokenUsage, {
+        previousFetchedAt: lastQuotaPayload?.fetchedAt
+      });
+      lastQuotaPayload = applyTrackedTokenFallback({ ...quota, tokenUsage, exchangeRate });
       if (modelUsageSnapshot && modelPriceService) {
         lastQuotaPayload.modelUsage = enrichModelUsage(modelUsageSnapshot, modelPriceService.snapshot());
       }

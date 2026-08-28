@@ -23,6 +23,10 @@ assert.match(main, /一键显示已勾选卡片/);
 assert.match(main, /cardsMasterEnabled/);
 assert.match(renderer, /cardsVisible/);
 assert.match(renderer, /panellessMeterMinimums/);
+assert.match(renderer, /text\(\)\.priced/);
+assert.match(stats, /t\(\)\.priced/);
+assert.match(renderer, /displayedTokens\s*>\s*Number\(estimate\?\.pricedTokens\)/);
+assert.match(stats, /displayedTokens\s*>\s*pricedTokens/);
 assert.match(widgetCss, /content\[data-panelless="true"\]/);
 
 for (const channel of ["pricing:settings:get", "pricing:settings:refresh", "pricing:manual:set", "pricing:official:restore"]) {
