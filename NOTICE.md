@@ -1,6 +1,6 @@
 # 来源、鸣谢与修改说明
 
-Codex LED Widget 当前版本是在以下原项目基础上继续开发的衍生版本：
+Codex 额度桌面助手当前版本是在以下原项目基础上继续开发的衍生版本：
 
 - 原项目：Codex LED Widget
 - 原项目作者账号：`xicunwus2025-sys`

@@ -1,6 +1,6 @@
-# Codex LED Widget 使用说明书
+# Codex 额度桌面助手使用说明书
 
-Codex LED Widget 是一款 Windows 桌面悬浮工具，用于查看 Codex 的 5 小时额度、7 天总额度、历史消耗、Token 用量和 API 等值费用。它会使用电脑上已经登录的 Codex 状态，不要求另行填写账号或 Token。
+Codex 额度桌面助手是一款 Windows 桌面悬浮工具，用于查看 Codex 的 5 小时额度、7 天总额度、历史消耗、Token 用量和 API 等值费用。它会使用电脑上已经登录的 Codex 状态，不要求另行填写账号或 Token。
 
 ## 一、软件特色
 
@@ -23,7 +23,7 @@ Codex LED Widget 是一款 Windows 桌面悬浮工具，用于查看 Codex 的 5
 ### 下载
 
 1. 打开 [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases)。
-2. 进入最新版本，下载 `Codex-LED-Widget-v1.0.0-Windows-x64.exe`。
+2. 进入最新版本，下载 `Codex-Quota-Desktop-Assistant-v1.0.0-Windows-x64.exe`。
 3. 双击文件即可运行，无需传统安装步骤。
 
 当前程序没有商业代码签名。如果 Windows 首次运行时显示“未知发布者”，请先确认文件来自本仓库，然后选择“更多信息 → 仍要运行”。
@@ -157,7 +157,6 @@ Codex LED Widget 是一款 Windows 桌面悬浮工具，用于查看 Codex 的 5
 遇到问题时，可以在仓库的 [Issues](https://github.com/q1433031046-ship-it/codex-led-widget/issues) 页面提交。建议附上：
 
 - Windows 版本。
-- Codex LED Widget 版本。
+- Codex 额度桌面助手版本。
 - 问题发生前的操作步骤。
 - 不包含账号隐私的截图。
-

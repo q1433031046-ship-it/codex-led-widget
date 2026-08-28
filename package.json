@@ -1,9 +1,9 @@
 {
   "name": "codex-led-widget",
   "version": "1.0.0",
-  "description": "A customizable Windows desktop widget for Codex quota, usage history, costs, and calendar insights.",
+  "description": "A customizable Windows desktop assistant for Codex quota, usage history, costs, and calendar insights.",
   "main": "src/main/main.js",
-  "author": "Codex Quota Widget Contributors",
+  "author": "Codex Quota Desktop Assistant Contributors",
   "license": "MIT",
   "private": true,
   "packageManager": "pnpm@11.19.0",
@@ -18,14 +18,14 @@
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
-    "test": "node scripts/test-sticky-menu.js && node scripts/test-calendar-ranges.js && node scripts/test-color-mode.js && node scripts/test-model-usage.js && node scripts/test-model-pricing.js && node scripts/test-token-consistency.js && node scripts/test-corner-resize.js && node scripts/test-history-persistence.js && node scripts/test-settings-stability.js && node scripts/test-adaptive-metrics.js && node scripts/test-magnetic-docking.js",
+    "test": "node scripts/test-sticky-menu.js && node scripts/test-calendar-ranges.js && node scripts/test-color-mode.js && node scripts/test-model-usage.js && node scripts/test-model-pricing.js && node scripts/test-token-consistency.js && node scripts/test-corner-resize.js && node scripts/test-history-persistence.js && node scripts/test-settings-stability.js && node scripts/test-adaptive-metrics.js && node scripts/test-magnetic-docking.js && node scripts/test-product-name.js",
     "build": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win portable",
     "release": "npm run build",
     "build:dir": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --dir"
   },
   "build": {
     "appId": "cn.codex.quota.widget",
-    "productName": "Codex LED Widget",
+    "productName": "Codex 额度桌面助手",
     "directories": {
       "output": "dist"
     },
@@ -48,7 +48,7 @@
       ]
     },
     "portable": {
-      "artifactName": "Codex-LED-Widget-v${version}-Windows-x64.exe"
+      "artifactName": "Codex-Quota-Desktop-Assistant-v${version}-Windows-x64.exe"
     }
   },
   "devDependencies": {

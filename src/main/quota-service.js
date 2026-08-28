@@ -257,7 +257,7 @@ function requestAccountData() {
         await send("initialize", {
           clientInfo: {
             name: "codex-led-widget",
-            title: "Codex LED Widget",
+            title: "Codex 额度桌面助手",
             version: "0.1.0"
           },
           capabilities: null

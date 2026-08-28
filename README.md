@@ -1,7 +1,7 @@
-# Codex LED Widget
+# Codex 额度桌面助手
 
 <p align="center">
-  <img src="assets/1.png" width="900" alt="Codex LED Widget 功能概览：实时额度、消耗趋势、Token 费用与日历统计" />
+  <img src="assets/1.png" width="900" alt="Codex 额度桌面助手功能概览：实时额度、消耗趋势、Token 费用与日历统计" />
 </p>
 
 <p align="center">
@@ -43,11 +43,11 @@
 ## 下载与使用
 
 1. 打开仓库的 [Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases) 页面。
-2. 下载 `Codex-LED-Widget-v1.0.0-Windows-x64.exe`。
+2. 下载 `Codex-Quota-Desktop-Assistant-v1.0.0-Windows-x64.exe`。
 3. 确认 Windows 版 Codex 已安装并登录，然后双击运行。
 4. 右键悬浮窗或系统托盘图标即可打开完整设置菜单。
 
-第一次使用或想了解全部功能，请查看 [《Codex LED Widget 使用说明书》](USER_GUIDE.zh-CN.md)。
+第一次使用或想了解全部功能，请查看 [《Codex 额度桌面助手使用说明书》](USER_GUIDE.zh-CN.md)。
 
 运行要求：Windows 10/11 x64、已安装并登录 Codex。
 
@@ -83,7 +83,7 @@ pnpm run dev
 pnpm run release
 ```
 
-输出位于 `dist/Codex-LED-Widget-v1.0.0-Windows-x64.exe`。
+输出位于 `dist/Codex-Quota-Desktop-Assistant-v1.0.0-Windows-x64.exe`。
 
 ## GitHub 发布
 
@@ -111,7 +111,7 @@ scripts/                 visual and behavior checks
 
 ## English
 
-Codex LED Widget is a customizable Windows desktop widget for Codex quota monitoring. It includes resizable orb and battery meters, 5-hour and 7-day usage charts, local quota history, token and estimated API cost statistics, and a GitHub-style contribution calendar.
+Codex Quota Desktop Assistant is a customizable Windows desktop assistant for Codex quota monitoring. It includes resizable orb and battery meters, 5-hour and 7-day usage charts, local quota history, token and estimated API cost statistics, and a GitHub-style contribution calendar.
 
 The statistics page opens from the last complete local snapshot and shares one fixed 60-second background refresh with the widget. Optional four-edge magnetic docking starts retracting immediately after pointer leave and restores the widget on hover. Window size, position, layout, and display preferences are remembered locally.
 
@@ -121,7 +121,7 @@ This project is a derivative of [xicunwus2025-sys/codex-led-widget](https://gith
 
 ### Download
 
-Download `Codex-LED-Widget-v1.0.0-Windows-x64.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed, signed-in Codex app are required.
+Download `Codex-Quota-Desktop-Assistant-v1.0.0-Windows-x64.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed, signed-in Codex app are required.
 
 ### Privacy
 

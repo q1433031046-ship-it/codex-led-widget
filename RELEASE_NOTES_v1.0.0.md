@@ -1,4 +1,4 @@
-## Codex LED Widget v1.0.0
+## Codex 额度桌面助手 v1.0.0
 
 一个可自由缩放、可高度定制的 Windows Codex 额度悬浮窗。
 
@@ -15,7 +15,7 @@
 
 ### 快速开始
 
-1. 下载下方的 `Codex-LED-Widget-v1.0.0-Windows-x64.exe`。
+1. 下载下方的 `Codex-Quota-Desktop-Assistant-v1.0.0-Windows-x64.exe`。
 2. 确认 Windows 版 Codex 已安装并登录。
 3. 双击运行；右键悬浮窗或右下角托盘图标打开全部设置。
 

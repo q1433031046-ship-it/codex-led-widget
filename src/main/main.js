@@ -13,9 +13,13 @@ const {
   pointInRect,
   snapExpandedBounds
 } = require("./magnet-controller");
+const PRODUCT_NAME = "Codex 额度桌面助手";
+const LEGACY_USER_DATA_DIRECTORY = "codex-led-widget";
 const QUOTA_STATS_SCHEMA_VERSION = 3;
 
-if (!app.isPackaged && process.env.CODEX_WIDGET_USER_DATA) {
+if (app.isPackaged) {
+  app.setPath("userData", path.join(app.getPath("appData"), LEGACY_USER_DATA_DIRECTORY));
+} else if (process.env.CODEX_WIDGET_USER_DATA) {
   app.setPath("userData", path.resolve(process.env.CODEX_WIDGET_USER_DATA));
 }
 
@@ -894,9 +898,9 @@ function notifyQuotaRefreshFailed(error) {
 function updateQuotaFailureState(error) {
   if (lastTrayQuota) {
     const remaining = lastTrayQuota.primary?.remainingPercent ?? lastTrayQuota.remainingPercent ?? "--";
-    tray?.setToolTip(`Codex 额度 · 暂时刷新失败 · 保留 ${remaining}%`);
+    tray?.setToolTip(`${PRODUCT_NAME} · 暂时刷新失败 · 保留 ${remaining}%`);
   } else {
-    tray?.setToolTip("Codex 额度 · 读取失败");
+    tray?.setToolTip(`${PRODUCT_NAME} · 读取失败`);
   }
   rebuildTrayMenu();
   notifyQuotaRefreshFailed(error);
@@ -1351,7 +1355,7 @@ function ensureMainWindowVisible() {
 async function createTray() {
   const icon = await app.getFileIcon(process.execPath, { size: "small" });
   tray = new Tray(icon);
-  tray.setToolTip("Codex 额度 · 正在读取");
+  tray.setToolTip(`${PRODUCT_NAME} · 正在读取`);
   rebuildTrayMenu();
   tray.on("click", toggleWindow);
 }
@@ -1629,7 +1633,7 @@ function updateTrayQuota(quota) {
           ? "secondary"
           : "primary";
   const remaining = quota?.[preferredSource]?.remainingPercent ?? quota?.remainingPercent ?? "--";
-  tray?.setToolTip(`Codex 额度 · 剩余 ${remaining}%`);
+  tray?.setToolTip(`${PRODUCT_NAME} · 剩余 ${remaining}%`);
   rebuildTrayMenu();
 }
 
