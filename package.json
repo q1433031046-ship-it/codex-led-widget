@@ -9,12 +9,12 @@
   "packageManager": "pnpm@11.19.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xicunwus2025-sys/codex-led-widget.git"
+    "url": "https://github.com/q1433031046-ship-it/codex-led-widget.git"
   },
   "bugs": {
-    "url": "https://github.com/xicunwus2025-sys/codex-led-widget/issues"
+    "url": "https://github.com/q1433031046-ship-it/codex-led-widget/issues"
   },
-  "homepage": "https://github.com/xicunwus2025-sys/codex-led-widget#readme",
+  "homepage": "https://github.com/q1433031046-ship-it/codex-led-widget#readme",
   "scripts": {
     "dev": "electron .",
     "start": "electron .",

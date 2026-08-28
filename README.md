@@ -35,7 +35,7 @@
 
 ## 下载与使用
 
-1. 打开仓库的 [Releases](https://github.com/xicunwus2025-sys/codex-led-widget/releases) 页面。
+1. 打开仓库的 [Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases) 页面。
 2. 下载 `Codex-LED-Widget-v1.0.0-Windows-x64.exe`。
 3. 确认 Windows 版 Codex 已安装并登录，然后双击运行。
 4. 右键悬浮窗或系统托盘图标即可打开完整设置菜单。
@@ -109,7 +109,7 @@ The statistics page opens from the last complete local snapshot and shares one f
 
 ### Download
 
-Download `Codex-LED-Widget-v1.0.0-Windows-x64.exe` from [GitHub Releases](https://github.com/xicunwus2025-sys/codex-led-widget/releases). Windows 10/11 x64 and an installed, signed-in Codex app are required.
+Download `Codex-LED-Widget-v1.0.0-Windows-x64.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed, signed-in Codex app are required.
 
 ### Privacy
 
