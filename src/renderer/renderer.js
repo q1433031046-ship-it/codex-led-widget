@@ -96,8 +96,7 @@ const copy = {
     lastWeekUnused: "上周未用",
     noPrevious: "暂无上轮记录",
     localRealtime: "本机实时统计",
-    apiEstimate: "按各模型的 OpenAI 官方输入、缓存与输出价格动态估算",
-    priced: "已计价",
+    apiEstimate: "按已计价用量的平均实际成本折算全部 Token",
     pricePending: "价格待更新",
     ratePending: "汇率待更新",
     pin: "置顶",
@@ -141,8 +140,7 @@ const copy = {
     lastWeekUnused: "Last week unused",
     noPrevious: "No previous cycle",
     localRealtime: "Local real-time count",
-    apiEstimate: "Estimated from each model's current official input, cached-input, and output rates",
-    priced: "priced",
+    apiEstimate: "All tokens projected from the average cost of currently priced usage",
     pricePending: "Price pending",
     ratePending: "Rate pending",
     pin: "Pin",
@@ -480,7 +478,12 @@ function formatTokenCount(value) {
 
 function formatMoneyEstimate(period, totalTokens) {
   const estimate = lastQuota?.modelUsage?.periods?.[period];
-  const dollars = Number(estimate?.costUsd);
+  const pricedCost = Number(estimate?.costUsd);
+  const pricedTokens = Number(estimate?.pricedTokens);
+  const displayedTokens = Number(totalTokens);
+  const dollars = Number.isFinite(displayedTokens) && displayedTokens >= 0 && pricedTokens > 0
+    ? pricedCost * displayedTokens / pricedTokens
+    : pricedCost;
   const trackedTokens = Number(estimate?.usage?.totalTokens);
   if (!Number.isFinite(dollars) || !Number.isFinite(trackedTokens)) return text().pricePending;
   if (trackedTokens > 0 && !(estimate?.pricedTokens > 0)) return text().pricePending;
@@ -499,10 +502,7 @@ function formatMoneyEstimate(period, totalTokens) {
       parts.push(text().ratePending);
     }
   }
-  const displayedTokens = Number(totalTokens);
-  const partial = Number(estimate?.unpricedTokens) > 0 || (Number.isFinite(displayedTokens) && displayedTokens > Number(estimate?.pricedTokens));
-  const amount = parts.length ? `${partial ? "≥ " : "≈ "}${parts.join(" / ")}` : "";
-  return partial ? `${text().priced} ${formatTokenCount(estimate.pricedTokens)} · ${amount}` : amount;
+  return parts.length ? `≈ ${parts.join(" / ")}` : "";
 }
 
 function renderTokenUsage() {
