@@ -11,6 +11,9 @@ assert.match(html, /id="quotaStatsGrid"/);
 assert.match(html, /id="tokenMetrics"/);
 assert.match(renderer, /quotaStatsGrid\.dataset\.visibleCount/);
 assert.match(renderer, /tokenMetrics\.dataset\.visibleCount/);
+assert.match(renderer, /todayPrimaryQuota: "今日 5小时"/);
+assert.match(renderer, /todayTotalQuota: "今日总消耗"/);
+assert.match(css, /\.quota-stats-card\s*\{[^}]*container-type:\s*size;/s);
 
 for (const count of [1, 2, 3]) {
   assert.match(css, new RegExp(`quota-stats-grid\\[data-visible-count="${count}"\\]`));
