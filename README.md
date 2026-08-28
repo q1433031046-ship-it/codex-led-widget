@@ -34,6 +34,12 @@
 - 右键菜单可开关悬浮窗各区域、切换数据、调整排列；连续修改开关时会自动回到当前子菜单。日历单位、范围和月/年样式集中放在统计子页面，不在托盘菜单重复出现；所有设置均保存在本机。
 - “悬浮窗卡片”子菜单提供独立总开关：关闭时只隐藏已勾选卡片，不改变各卡片的勾选组合；重新开启时只恢复原来勾选的卡片。无卡片时圆球、横向电池和竖向电池会随窗口空间自适应到合理尺寸。
 
+## 来源与鸣谢
+
+本项目基于 [xicunwus2025-sys/codex-led-widget](https://github.com/xicunwus2025-sys/codex-led-widget) 继续开发。感谢原作者提供最初的 Windows Codex 额度悬浮窗构想与实现基础；当前版本在此基础上对界面、缩放布局、仪表动画、消耗图、磁吸、历史统计、Token/费用和日历等功能进行了大量扩展。
+
+原项目 README 声明使用 MIT License，当前版本继续采用 MIT License，并保留原项目与当前修改者的署名。完整说明请查看 [NOTICE](NOTICE.md) 和 [LICENSE](LICENSE)。本项目是社区工具，与 OpenAI 没有官方隶属或背书关系。
+
 ## 下载与使用
 
 1. 打开仓库的 [Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases) 页面。
@@ -108,6 +114,10 @@ scripts/                 visual and behavior checks
 Codex LED Widget is a customizable Windows desktop widget for Codex quota monitoring. It includes resizable orb and battery meters, 5-hour and 7-day usage charts, local quota history, token and estimated API cost statistics, and a GitHub-style contribution calendar.
 
 The statistics page opens from the last complete local snapshot and shares one fixed 60-second background refresh with the widget. Optional four-edge magnetic docking starts retracting immediately after pointer leave and restores the widget on hover. Window size, position, layout, and display preferences are remembered locally.
+
+### Attribution
+
+This project is a derivative of [xicunwus2025-sys/codex-led-widget](https://github.com/xicunwus2025-sys/codex-led-widget), whose README declared the MIT License. The current version substantially extends the original project and retains attribution for both the upstream work and subsequent modifications. See [NOTICE](NOTICE.md) and [LICENSE](LICENSE). This is a community project and is not officially affiliated with or endorsed by OpenAI.
 
 ### Download
 
