@@ -837,7 +837,7 @@ body[data-card-resizing="true"] * {
   min-width: 0;
   overflow: hidden;
   color: rgba(226, 232, 240, 0.72);
-  font-size: clamp(6px, min(1.5cqw, 7cqh), 12px);
+  font-size: clamp(7px, min(2.25cqw, 14cqh), 16px);
   font-weight: 650;
   text-align: center;
   text-overflow: ellipsis;
@@ -847,7 +847,7 @@ body[data-card-resizing="true"] * {
 
 .quota-stat-metric strong {
   color: var(--accent);
-  font-size: clamp(7px, min(2.4cqw, 9cqh), 20px);
+  font-size: clamp(9px, min(4cqw, 28cqh), 28px);
   font-weight: 790;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.025em;
@@ -857,11 +857,11 @@ body[data-card-resizing="true"] * {
 }
 
 .quota-stats-grid[data-visible-count="3"] .quota-stat-metric span {
-  font-size: clamp(7px, min(1.9cqw, 11cqh), 14px);
+  font-size: clamp(8px, min(3.1cqw, 18cqh), 18px);
 }
 
 .quota-stats-grid[data-visible-count="3"] .quota-stat-metric strong {
-  font-size: clamp(9px, min(3.1cqw, 16cqh), 24px);
+  font-size: clamp(12px, min(6cqw, 36cqh), 34px);
 }
 
 .quota-stats-grid[data-visible-count="2"] {
@@ -869,11 +869,11 @@ body[data-card-resizing="true"] * {
 }
 
 .quota-stats-grid[data-visible-count="2"] .quota-stat-metric span {
-  font-size: clamp(8px, min(2.4cqw, 14cqh), 18px);
+  font-size: clamp(10px, min(4.2cqw, 22cqh), 22px);
 }
 
 .quota-stats-grid[data-visible-count="2"] .quota-stat-metric strong {
-  font-size: clamp(11px, min(4.2cqw, 22cqh), 30px);
+  font-size: clamp(16px, min(8.5cqw, 44cqh), 42px);
 }
 
 .quota-stats-grid[data-visible-count="1"] {
@@ -881,11 +881,11 @@ body[data-card-resizing="true"] * {
 }
 
 .quota-stats-grid[data-visible-count="1"] .quota-stat-metric span {
-  font-size: clamp(9px, min(3cqw, 16cqh), 20px);
+  font-size: clamp(11px, min(5.2cqw, 24cqh), 24px);
 }
 
 .quota-stats-grid[data-visible-count="1"] .quota-stat-metric strong {
-  font-size: clamp(13px, min(5.6cqw, 27cqh), 38px);
+  font-size: clamp(20px, min(12cqw, 52cqh), 52px);
 }
 
 .token-card {
@@ -935,11 +935,11 @@ body[data-card-resizing="true"] * {
 }
 
 .token-metrics[data-visible-count="2"] .token-metric span {
-  font-size: clamp(7px, min(2.7cqw, 12cqh), 18px);
+  font-size: clamp(9px, min(4cqw, 18cqh), 20px);
 }
 
 .token-metrics[data-visible-count="2"] .token-metric strong {
-  font-size: clamp(10px, min(4.4cqw, 18cqh), 30px);
+  font-size: clamp(14px, min(7.5cqw, 34cqh), 38px);
 }
 
 .token-metrics[data-visible-count="1"] {
@@ -952,11 +952,11 @@ body[data-card-resizing="true"] * {
 }
 
 .token-metrics[data-visible-count="1"] .token-metric span {
-  font-size: clamp(8px, min(3.2cqw, 14cqh), 20px);
+  font-size: clamp(10px, min(5cqw, 22cqh), 24px);
 }
 
 .token-metrics[data-visible-count="1"] .token-metric strong {
-  font-size: clamp(12px, min(5.4cqw, 23cqh), 38px);
+  font-size: clamp(18px, min(11cqw, 46cqh), 48px);
 }
 
 .token-money {
