@@ -1,7 +1,7 @@
 # Codex LED Widget
 
 <p align="center">
-  <img src="assets/1.png" width="420" alt="Codex LED Widget preview" />
+  <img src="assets/1.png" width="900" alt="Codex LED Widget 功能概览：实时额度、消耗趋势、Token 费用与日历统计" />
 </p>
 
 <p align="center">
