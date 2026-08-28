@@ -39,6 +39,7 @@ const elements = {
   quotaStatsCard: document.getElementById("quotaStatsCard"),
   quotaStatsGrid: document.getElementById("quotaStatsGrid"),
   quotaStatMetrics: [...document.querySelectorAll(".quota-stat-metric")],
+  tokenMetrics: document.getElementById("tokenMetrics"),
   tokenTodayRow: document.getElementById("tokenTodayRow"),
   tokenWeekRow: document.getElementById("tokenWeekRow"),
   tokenLifetimeRow: document.getElementById("tokenLifetimeRow"),
@@ -522,6 +523,7 @@ function renderTokenUsage() {
     const rate = Number(lastQuota?.exchangeRate?.usdCny);
     usdElement.title = Number.isFinite(rate) ? `${text().apiEstimate} · USD/CNY ${rate.toFixed(4)}` : text().apiEstimate;
   }
+  elements.tokenMetrics.dataset.visibleCount = String(rows.filter((row) => row[5]).length);
   elements.tokenTodayRow.title = usage?.todaySource === "local" ? text().localRealtime : "";
 }
 
@@ -537,12 +539,16 @@ function renderQuotaStats() {
     .map((key) => elements.quotaStatMetrics.find((metric) => metric.dataset.statKey === key))
     .filter(Boolean);
   for (const metric of orderedMetrics) elements.quotaStatsGrid.appendChild(metric);
+  let visibleCount = 0;
   for (const metric of elements.quotaStatMetrics) {
     const key = metric.dataset.statKey;
-    metric.hidden = !displayPreferences.quotaStatVisibility[key];
+    const visible = Boolean(displayPreferences.quotaStatVisibility[key]);
+    metric.hidden = !visible;
+    if (visible) visibleCount += 1;
     metric.querySelector("[data-stat-label]").textContent = quotaStatLabel(key);
     metric.querySelector("[data-stat-value]").textContent = formatQuotaPercent(stats?.[key]);
   }
+  elements.quotaStatsGrid.dataset.visibleCount = String(visibleCount);
   const startedAt = stats?.trackingStartedAt ? new Date(stats.trackingStartedAt) : null;
   elements.quotaStatsCard.title = startedAt && Number.isFinite(startedAt.getTime())
     ? `${language === "zh" ? "统计始于" : "Tracking since"} ${startedAt.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US")}`

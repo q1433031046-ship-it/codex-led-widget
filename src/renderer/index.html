@@ -109,7 +109,7 @@
             <div class="card-corner-resize-handle corner-bottom-right" data-card="stats" data-corner="bottom-right" title="斜向拖动调整卡片宽高" aria-hidden="true"></div>
           </div>
           <div id="tokenCard" class="quota-card token-card">
-            <div class="token-metrics">
+            <div id="tokenMetrics" class="token-metrics">
               <div id="tokenTodayRow" class="token-metric">
                 <span id="tokenTodayLabel">今天</span>
                 <strong id="tokenToday">--</strong>
@@ -205,10 +205,10 @@
           setAlwaysOnTop: async (value) => Boolean(value),
           getDisplayPreferences: async () => ({
             alwaysOnTop: true,
-            primaryCardEnabled: true,
-            secondaryCardEnabled: true,
+            primaryCardEnabled: !previewParams.has("statsOnly"),
+            secondaryCardEnabled: !previewParams.has("statsOnly"),
             cardsMasterEnabled: !previewParams.has("noCards"),
-            meterEnabled: true,
+            meterEnabled: !previewParams.has("statsOnly"),
             meterSource: "primary",
             meterStyle: previewParams.get("meter") === "battery" ? "battery" : "circle",
             batteryOrientation: previewParams.get("battery") === "vertical" ? "vertical" : "horizontal",
@@ -227,7 +227,7 @@
             primaryShowCountdown: false,
             secondaryShowResetTime: false,
             secondaryShowCountdown: !previewParams.has("noReset"),
-            tokenPanelEnabled: true,
+            tokenPanelEnabled: !previewParams.has("statsOnly"),
             tokenShowToday: true,
             tokenShowWeek: true,
             tokenShowLifetime: true,
@@ -240,7 +240,9 @@
             calendarCursor: null,
             calendarYearStyle: "months",
             quotaStatsPanelEnabled: previewParams.has("stats"),
-            quotaStatVisibility: { lifetimeTotal: true, todayTotal: true, weekPrimary: true, todayPrimary: true },
+            quotaStatVisibility: previewParams.get("statsCount") === "2"
+              ? { lifetimeTotal: false, todayTotal: true, weekPrimary: false, todayPrimary: true }
+              : { lifetimeTotal: true, todayTotal: true, weekPrimary: true, todayPrimary: true },
             quotaStatOrder: previewParams.has("legacy")
               ? ["todayPrimary", "weekPrimary", "weekTotal", "lifetimeTotal"]
               : ["todayPrimary", "todayTotal", "weekPrimary", "lifetimeTotal"],

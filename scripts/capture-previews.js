@@ -14,6 +14,7 @@ const previews = [
   { name: "battery-vertical-large", width: 680, height: 884, query: { preview: "1", meter: "battery", battery: "vertical", chart: "primary", stats: "1", remaining: "28" } },
   { name: "both-charts", width: 760, height: 520, query: { preview: "1", chart: "both", meter: "battery" } },
   { name: "widget-stats", width: 560, height: 260, query: { preview: "1", meter: "battery", stats: "1", remaining: "42", legacy: "1" } },
+  { name: "widget-stats-two", width: 390, height: 86, query: { preview: "1", stats: "1", statsOnly: "1", statsCount: "2", remaining: "42" } },
   { name: "history-copy-small", width: 330, height: 90, query: { preview: "1", noReset: "1", remaining: "46" } },
   { name: "primary-remaining-mode", width: 330, height: 90, query: { preview: "1", noReset: "1", remaining: "28", primaryValue: "remaining" } },
   { name: "refresh-error-stability", width: 330, height: 90, query: { preview: "1", noReset: "1", remaining: "46", failAfterFirst: "1" } },
@@ -46,6 +47,19 @@ app.whenReady().then(async () => {
     window.setBounds({ x: 0, y: 0, width: preview.width, height: preview.height });
     await window.loadFile(path.join(__dirname, "..", "src", "renderer", preview.file || "index.html"), { query: preview.query });
     await new Promise((resolve) => setTimeout(resolve, 2100));
+    if (preview.name === "widget-stats-two") {
+      const adaptiveResult = await window.webContents.executeJavaScript(`(() => {
+        const labels = [...document.querySelectorAll('.quota-stat-metric:not([hidden]) span')];
+        const values = [...document.querySelectorAll('.quota-stat-metric:not([hidden]) strong')];
+        return {
+          visibleCount: document.getElementById('quotaStatsGrid').dataset.visibleCount,
+          labelSizes: labels.map((element) => getComputedStyle(element).fontSize),
+          valueSizes: values.map((element) => getComputedStyle(element).fontSize)
+        };
+      })()`);
+      fs.writeFileSync(path.join(outputDirectory, "adaptive-metrics-result.json"), JSON.stringify(adaptiveResult));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
     if (preview.name === "stats-pricing") {
       const pricingResult = await window.webContents.executeJavaScript(`(async () => {
         document.getElementById("pricingSettingsButton").click();

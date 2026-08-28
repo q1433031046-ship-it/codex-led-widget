@@ -841,6 +841,7 @@ body[data-card-resizing="true"] * {
   font-weight: 650;
   text-align: center;
   text-overflow: ellipsis;
+  transition: font-size 220ms cubic-bezier(0.22, 1, 0.36, 1);
   white-space: nowrap;
 }
 
@@ -851,7 +852,40 @@ body[data-card-resizing="true"] * {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.025em;
   text-align: center;
+  transition: font-size 220ms cubic-bezier(0.22, 1, 0.36, 1);
   white-space: nowrap;
+}
+
+.quota-stats-grid[data-visible-count="3"] .quota-stat-metric span {
+  font-size: clamp(7px, min(1.9cqw, 11cqh), 14px);
+}
+
+.quota-stats-grid[data-visible-count="3"] .quota-stat-metric strong {
+  font-size: clamp(9px, min(3.1cqw, 16cqh), 24px);
+}
+
+.quota-stats-grid[data-visible-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quota-stats-grid[data-visible-count="2"] .quota-stat-metric span {
+  font-size: clamp(8px, min(2.4cqw, 14cqh), 18px);
+}
+
+.quota-stats-grid[data-visible-count="2"] .quota-stat-metric strong {
+  font-size: clamp(11px, min(4.2cqw, 22cqh), 30px);
+}
+
+.quota-stats-grid[data-visible-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.quota-stats-grid[data-visible-count="1"] .quota-stat-metric span {
+  font-size: clamp(9px, min(3cqw, 16cqh), 20px);
+}
+
+.quota-stats-grid[data-visible-count="1"] .quota-stat-metric strong {
+  font-size: clamp(13px, min(5.6cqw, 27cqh), 38px);
 }
 
 .token-card {
@@ -883,6 +917,7 @@ body[data-card-resizing="true"] * {
   font-size: clamp(6px, min(2.2cqw, 7cqh), 16px);
   font-weight: 650;
   text-overflow: ellipsis;
+  transition: font-size 220ms cubic-bezier(0.22, 1, 0.36, 1);
   white-space: nowrap;
 }
 
@@ -891,7 +926,37 @@ body[data-card-resizing="true"] * {
   font-size: clamp(7px, min(3.2cqw, 9cqh), 24px);
   font-weight: 780;
   letter-spacing: -0.02em;
+  transition: font-size 220ms cubic-bezier(0.22, 1, 0.36, 1);
   white-space: nowrap;
+}
+
+.token-metrics[data-visible-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.token-metrics[data-visible-count="2"] .token-metric span {
+  font-size: clamp(7px, min(2.7cqw, 12cqh), 18px);
+}
+
+.token-metrics[data-visible-count="2"] .token-metric strong {
+  font-size: clamp(10px, min(4.4cqw, 18cqh), 30px);
+}
+
+.token-metrics[data-visible-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.token-metrics[data-visible-count="1"] .token-metric {
+  grid-template-columns: minmax(0, auto) auto;
+  justify-content: center;
+}
+
+.token-metrics[data-visible-count="1"] .token-metric span {
+  font-size: clamp(8px, min(3.2cqw, 14cqh), 20px);
+}
+
+.token-metrics[data-visible-count="1"] .token-metric strong {
+  font-size: clamp(12px, min(5.4cqw, 23cqh), 38px);
 }
 
 .token-money {

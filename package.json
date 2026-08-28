@@ -18,7 +18,7 @@
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
-    "test": "node scripts/test-sticky-menu.js && node scripts/test-calendar-ranges.js && node scripts/test-color-mode.js && node scripts/test-model-usage.js && node scripts/test-model-pricing.js && node scripts/test-token-consistency.js && node scripts/test-corner-resize.js && node scripts/test-history-persistence.js && node scripts/test-settings-stability.js && node scripts/test-magnetic-docking.js",
+    "test": "node scripts/test-sticky-menu.js && node scripts/test-calendar-ranges.js && node scripts/test-color-mode.js && node scripts/test-model-usage.js && node scripts/test-model-pricing.js && node scripts/test-token-consistency.js && node scripts/test-corner-resize.js && node scripts/test-history-persistence.js && node scripts/test-settings-stability.js && node scripts/test-adaptive-metrics.js && node scripts/test-magnetic-docking.js",
     "build": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win portable",
     "release": "npm run build",
     "build:dir": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --dir"
@@ -31,7 +31,10 @@
     },
     "files": [
       "src/**/*",
-      "package.json"
+      "package.json",
+      "LICENSE",
+      "NOTICE.md",
+      "USER_GUIDE.zh-CN.md"
     ],
     "win": {
       "signAndEditExecutable": false,
