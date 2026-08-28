@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="#下载与使用">下载与使用</a> ·
+  <a href="USER_GUIDE.zh-CN.md">使用说明书</a> ·
   <a href="#主要功能">主要功能</a> ·
   <a href="#隐私说明">隐私说明</a> ·
   <a href="#english">English</a>
@@ -39,6 +40,8 @@
 2. 下载 `Codex-LED-Widget-v1.0.0-Windows-x64.exe`。
 3. 确认 Windows 版 Codex 已安装并登录，然后双击运行。
 4. 右键悬浮窗或系统托盘图标即可打开完整设置菜单。
+
+第一次使用或想了解全部功能，请查看 [《Codex LED Widget 使用说明书》](USER_GUIDE.zh-CN.md)。
 
 运行要求：Windows 10/11 x64、已安装并登录 Codex。
 
