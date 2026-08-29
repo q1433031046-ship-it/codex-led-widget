@@ -91,8 +91,8 @@ pnpm run release
 正式版本由维护者在本地完成检查和构建，再将唯一的 Windows `.exe` 上传到 GitHub Releases。
 
 ```powershell
-git tag v1.0
-git push origin v1.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 ## 项目结构
