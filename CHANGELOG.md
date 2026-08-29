@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.0.0 - 2026-08-27
+## 1.0 - 2026-08-29
+
+- Replaced the portable runtime with a per-user NSIS installer so normal launches run directly from the installation directory and no longer unpack full Electron copies into the Windows temporary directory.
+- Added a startup check for the latest official GitHub release, with one notification per newer version and a direct download action.
+- Preserved the existing `codex-led-widget` user-data directory across the packaging migration.
 
 - Added freely resizable orb and horizontal/vertical battery meters.
 - Added smooth quota-aware liquid, particle, bubble, highlight, and color transitions.

@@ -33,6 +33,7 @@
 - 统计页秒开最近一次完整结果；应用在后台每 60 秒统一刷新，避免打开页面时重复扫描。
 - 右键菜单可开关悬浮窗各区域、切换数据、调整排列；连续修改开关时会自动回到当前子菜单。日历单位、范围和月/年样式集中放在统计子页面，不在托盘菜单重复出现；所有设置均保存在本机。
 - “悬浮窗卡片”子菜单提供独立总开关：关闭时只隐藏已勾选卡片，不改变各卡片的勾选组合；重新开启时只恢复原来勾选的卡片。无卡片时圆球、横向电池和竖向电池会随窗口空间自适应到合理尺寸。
+- 启动后会检查 GitHub 最新正式发行版；发现更高版本时弹窗提醒，同一个新版本只提醒一次。
 
 ## 来源与鸣谢
 
@@ -43,8 +44,8 @@
 ## 下载与使用
 
 1. 打开仓库的 [Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases) 页面。
-2. 下载 `Codex-Quota-Desktop-Assistant-v1.0.0-Windows-x64.exe`。
-3. 确认 Windows 版 Codex 已安装并登录，然后双击运行。
+2. 下载 `Codex-Quota-Desktop-Assistant-1.0-Windows-x64-Setup.exe`。
+3. 确认 Windows 版 Codex 已安装并登录，然后双击安装。
 4. 右键悬浮窗或系统托盘图标即可打开完整设置菜单。
 
 第一次使用或想了解全部功能，请查看 [《Codex 额度桌面助手使用说明书》](USER_GUIDE.zh-CN.md)。
@@ -67,7 +68,7 @@
 - 使用本机已有的 Codex 登录状态，不要求输入或保存认证 Token。
 - 额度、Token 历史、窗口设置与统计快照保存在当前电脑。
 - 不上传额度或 Token 使用数据。
-- 应用只会向 OpenAI 官方模型文档读取公开价格，并向公开汇率接口读取 USD/CNY；这些请求不会携带你的用量数据。
+- 应用只会向 OpenAI 官方模型文档读取公开价格、向公开汇率接口读取 USD/CNY，并向 GitHub Releases 检查最新正式版本；这些请求不会携带你的用量数据。
 
 ## 本地开发
 
@@ -77,21 +78,21 @@ pnpm install --frozen-lockfile
 pnpm run dev
 ```
 
-生成唯一的 Windows 发布文件：
+生成唯一的 Windows 安装程序：
 
 ```powershell
 pnpm run release
 ```
 
-输出位于 `dist/Codex-Quota-Desktop-Assistant-v1.0.0-Windows-x64.exe`。
+输出位于 `dist/Codex-Quota-Desktop-Assistant-1.0-Windows-x64-Setup.exe`。安装后的程序直接从安装目录运行，不会在每次启动时向临时目录解压完整副本。
 
 ## GitHub 发布
 
 正式版本由维护者在本地完成检查和构建，再将唯一的 Windows `.exe` 上传到 GitHub Releases。
 
 ```powershell
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0
+git push origin v1.0
 ```
 
 ## 项目结构
@@ -121,11 +122,11 @@ This project is a derivative of [xicunwus2025-sys/codex-led-widget](https://gith
 
 ### Download
 
-Download `Codex-Quota-Desktop-Assistant-v1.0.0-Windows-x64.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed, signed-in Codex app are required.
+Download `Codex-Quota-Desktop-Assistant-1.0-Windows-x64-Setup.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed, signed-in Codex app are required. The installed app runs directly from its installation directory instead of unpacking a portable copy on every launch. A newer official release triggers one notification per version.
 
 ### Privacy
 
-The app uses your existing local Codex session and does not ask for or store an authentication token. Quota history and preferences stay on your computer. An external request is made only to obtain the public USD/CNY exchange rate; no usage data is included.
+The app uses your existing local Codex session and does not ask for or store an authentication token. Quota history and preferences stay on your computer. External requests retrieve public model prices, the USD/CNY exchange rate, and the latest GitHub release metadata; no usage data is included.
 
 ### Build
 

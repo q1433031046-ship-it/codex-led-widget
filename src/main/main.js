@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain, shell, Tray, Menu, screen, net } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, screen, net } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const { getQuota, mergeTokenUsageSnapshot } = require("./quota-service");
 const { createModelUsageService } = require("./model-usage-service");
 const { createModelPriceService, enrichModelUsage } = require("./model-price-service");
+const { formatDisplayVersion, releaseFromGitHub, shouldNotifyUpdate } = require("./update-service");
 const {
   activationRect,
   chooseSnapEdge,
@@ -16,6 +17,7 @@ const {
 const PRODUCT_NAME = "Codex 额度桌面助手";
 const LEGACY_USER_DATA_DIRECTORY = "codex-led-widget";
 const QUOTA_STATS_SCHEMA_VERSION = 3;
+const GITHUB_LATEST_RELEASE_API = "https://api.github.com/repos/q1433031046-ship-it/codex-led-widget/releases/latest";
 
 if (app.isPackaged) {
   app.setPath("userData", path.join(app.getPath("appData"), LEGACY_USER_DATA_DIRECTORY));
@@ -45,6 +47,7 @@ let modelPriceService;
 let modelUsageSnapshot = null;
 let usageInsightsRefreshPromise = null;
 let usageInsightsRefreshTimer = null;
+let updateCheckTimer = null;
 let lastQuotaPayload = null;
 let quotaRefreshPromise = null;
 let quotaRefreshTimer = null;
@@ -780,6 +783,95 @@ async function fetchOfficialText(url) {
   const response = await net.fetch(url, { signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error(`Official pricing response ${response.status}`);
   return response.text();
+}
+
+function updateNotificationStatePath() {
+  return path.join(app.getPath("userData"), "update-notification.json");
+}
+
+function loadUpdateNotificationState() {
+  try {
+    const value = JSON.parse(fs.readFileSync(updateNotificationStatePath(), "utf8"));
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveUpdateNotificationState(value) {
+  fs.mkdirSync(app.getPath("userData"), { recursive: true });
+  fs.writeFileSync(updateNotificationStatePath(), JSON.stringify(value, null, 2), "utf8");
+}
+
+async function checkForUpdateNotification() {
+  const response = await net.fetch(GITHUB_LATEST_RELEASE_API, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "codex-quota-desktop-assistant",
+      "X-GitHub-Api-Version": "2022-11-28"
+    },
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!response.ok) throw new Error(`GitHub release response ${response.status}`);
+  const release = releaseFromGitHub(await response.json());
+  const state = loadUpdateNotificationState();
+  if (!shouldNotifyUpdate(app.getVersion(), release, state.lastNotifiedVersion)) return;
+
+  saveUpdateNotificationState({
+    ...state,
+    lastNotifiedVersion: release.version,
+    lastNotifiedAt: new Date().toISOString()
+  });
+
+  const options = {
+    type: "info",
+    title: `${PRODUCT_NAME} 有新版本`,
+    message: `检测到新版本 ${release.displayVersion}`,
+    detail: `当前版本 ${formatDisplayVersion(app.getVersion())}。同一个新版本只会提醒一次，可前往 GitHub Releases 下载安装。`,
+    buttons: ["前往下载", "稍后处理"],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true
+  };
+  const result = mainWindow && !mainWindow.isDestroyed()
+    ? await dialog.showMessageBox(mainWindow, options)
+    : await dialog.showMessageBox(options);
+  if (result.response === 0) await shell.openExternal(release.url);
+}
+
+function scheduleUpdateNotificationCheck() {
+  if (!app.isPackaged) return;
+  clearTimeout(updateCheckTimer);
+  updateCheckTimer = setTimeout(() => {
+    checkForUpdateNotification().catch(() => {});
+  }, 5000);
+}
+
+function migrateExistingStartupShortcut() {
+  if (process.platform !== "win32" || !app.isPackaged) return;
+  const shortcutPath = path.join(
+    app.getPath("appData"),
+    "Microsoft",
+    "Windows",
+    "Start Menu",
+    "Programs",
+    "Startup",
+    `${PRODUCT_NAME}.lnk`
+  );
+  if (!fs.existsSync(shortcutPath)) return;
+  try {
+    const current = shell.readShortcutLink(shortcutPath);
+    if (path.resolve(current.target || "") === path.resolve(process.execPath)) return;
+    shell.writeShortcutLink(shortcutPath, "replace", {
+      target: process.execPath,
+      cwd: path.dirname(process.execPath),
+      description: `${PRODUCT_NAME} 1.0`,
+      icon: process.execPath,
+      iconIndex: 0
+    });
+  } catch {
+    // Keep startup migration best-effort; a shortcut permission issue must not block launch.
+  }
 }
 
 function localTodayTrackedTokens() {
@@ -1708,6 +1800,7 @@ if (hasSingleInstanceLock) {
 
 app.whenReady().then(async () => {
   app.setAppUserModelId("cn.codex.quota.widget");
+  migrateExistingStartupShortcut();
   const codexHome = process.env.CODEX_HOME || path.join(process.env.USERPROFILE || "", ".codex");
   modelUsageService = createModelUsageService({
     sessionsRoot: path.join(codexHome, "sessions"),
@@ -1783,6 +1876,7 @@ app.whenReady().then(async () => {
   startFixedQuotaRefresh();
   startUsageInsightsRefresh();
   pollMagnetCursor();
+  scheduleUpdateNotificationCheck();
   screen.on("display-metrics-changed", reanchorMagnetWindow);
   screen.on("display-added", reanchorMagnetWindow);
   screen.on("display-removed", reanchorMagnetWindow);
@@ -1803,6 +1897,7 @@ app.on("before-quit", () => {
   clearTimeout(magnetPollTimer);
   clearTimeout(magnetRetractTimer);
   clearTimeout(magnetProgrammaticMoveResetTimer);
+  clearTimeout(updateCheckTimer);
   clearTimeout(magnetMoveSettleTimer);
   stopMagnetAnimation();
   saveWindowState(mainWindow, windowStatePath());
