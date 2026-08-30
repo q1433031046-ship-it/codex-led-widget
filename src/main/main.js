@@ -13,6 +13,12 @@ const { createModelUsageService } = require("./model-usage-service");
 const { createModelPriceService, enrichModelUsage } = require("./model-price-service");
 const { formatDisplayVersion, releaseFromGitHub, shouldNotifyUpdate } = require("./update-service");
 const {
+  ACCOUNT_BOOTSTRAP_VERSION,
+  applyLayoutBootstrap,
+  loadInitializationState,
+  saveInitializationState
+} = require("./initialization-service");
+const {
   activationRect,
   chooseSnapEdge,
   collapsedBounds,
@@ -57,6 +63,7 @@ let usageInsightsRefreshPromise = null;
 let usageInsightsRefreshTimer = null;
 let updateCheckTimer = null;
 let lastQuotaPayload = null;
+let initializationState;
 let quotaRefreshPromise = null;
 let quotaRefreshTimer = null;
 let magnetPollTimer = null;
@@ -218,6 +225,19 @@ function displayPreferencesPath() {
 
 function quotaSnapshotPath() {
   return path.join(app.getPath("userData"), "last-quota-snapshot.json");
+}
+
+function initializationStatePath() {
+  return path.join(app.getPath("userData"), "initialization-state.json");
+}
+
+function readSavedWindowState(filePath) {
+  try {
+    const saved = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return saved && typeof saved === "object" ? saved : {};
+  } catch {
+    return {};
+  }
 }
 
 function loadDisplayPreferences() {
@@ -623,7 +643,8 @@ function loadQuotaSnapshot() {
     return {
       ...normalizedSaved,
       activeSourceId: normalizeQuotaSourceId(normalizedSaved.activeSourceId || normalizedSaved.limitId) || "codex",
-      planLabel: normalizedSaved.planLabel || displayPlanType(normalizedSaved.planType)
+      planLabel: normalizedSaved.planLabel || displayPlanType(normalizedSaved.planType),
+      stale: true
     };
   } catch {
     return null;
@@ -1875,6 +1896,23 @@ app.whenReady().then(async () => {
     fetchText: fetchOfficialText
   });
   displayPreferences = loadDisplayPreferences();
+  initializationState = loadInitializationState(initializationStatePath());
+  const layoutBootstrap = applyLayoutBootstrap(
+    displayPreferences,
+    readSavedWindowState(windowStatePath()),
+    initializationState
+  );
+  displayPreferences = layoutBootstrap.preferences;
+  initializationState = layoutBootstrap.state;
+  if (layoutBootstrap.applied) {
+    try {
+      fs.writeFileSync(displayPreferencesPath(), JSON.stringify(displayPreferences), "utf8");
+      fs.writeFileSync(windowStatePath(), JSON.stringify(layoutBootstrap.windowState), "utf8");
+      initializationState = saveInitializationState(initializationStatePath(), initializationState);
+    } catch {
+      // Keep the safe layout active in memory and retry persistence next launch.
+    }
+  }
   isAlwaysOnTop = displayPreferences.alwaysOnTop !== false;
   lastQuotaPayload = loadQuotaSnapshot();
   usageHistory = loadUsageHistory();
