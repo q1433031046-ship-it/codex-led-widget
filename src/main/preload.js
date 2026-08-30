@@ -13,6 +13,10 @@ contextBridge.exposeInMainWorld("codexQuota", {
   setSettingsPreferences: (value) => ipcRenderer.invoke("settings:preferences:set", value),
   setQuotaSource: (sourceId) => ipcRenderer.invoke("settings:quotaSource:set", sourceId),
   copyDiagnostics: () => ipcRenderer.invoke("settings:diagnostics:copy"),
+  getInitializationState: () => ipcRenderer.invoke("initialization:state:get"),
+  retryInitialization: () => ipcRenderer.invoke("initialization:retry"),
+  reopenInitializationLogin: () => ipcRenderer.invoke("initialization:login:reopen"),
+  closeInitialization: () => ipcRenderer.invoke("initialization:close"),
   getAlwaysOnTop: () => ipcRenderer.invoke("window:alwaysOnTop:get"),
   setAlwaysOnTop: (value) => ipcRenderer.invoke("window:alwaysOnTop:set", value),
   getMagnetState: () => ipcRenderer.invoke("window:magnetState:get"),
@@ -54,5 +58,8 @@ contextBridge.exposeInMainWorld("codexQuota", {
   },
   onSettingsNavigate: (callback) => {
     ipcRenderer.on("settings:navigate", (_event, value) => callback(value));
+  },
+  onInitializationStateChanged: (callback) => {
+    ipcRenderer.on("initialization:stateChanged", (_event, value) => callback(value));
   }
 });

@@ -15,9 +15,11 @@ const { formatDisplayVersion, releaseFromGitHub, shouldNotifyUpdate } = require(
 const {
   ACCOUNT_BOOTSTRAP_VERSION,
   applyLayoutBootstrap,
+  initialQuotaPreferences,
   loadInitializationState,
   saveInitializationState
 } = require("./initialization-service");
+const { createInitializationController } = require("./initialization-controller");
 const {
   activationRect,
   chooseSnapEdge,
@@ -46,6 +48,7 @@ if (!hasSingleInstanceLock) app.quit();
 let mainWindow;
 let statsWindow;
 let settingsWindow;
+let initializationWindow;
 let tray;
 let trayMenu;
 let isAlwaysOnTop = true;
@@ -64,6 +67,8 @@ let usageInsightsRefreshTimer = null;
 let updateCheckTimer = null;
 let lastQuotaPayload = null;
 let initializationState;
+let initializationController;
+let initializationReadyHideTimer;
 let quotaRefreshPromise = null;
 let quotaRefreshTimer = null;
 let magnetPollTimer = null;
@@ -1054,14 +1059,17 @@ function updateQuotaFailureState(error) {
   notifyQuotaRefreshFailed(error);
 }
 
-async function refreshQuotaSnapshot() {
+async function refreshQuotaSnapshot(options = {}) {
   if (quotaRefreshPromise) return quotaRefreshPromise;
   quotaRefreshPromise = (async () => {
     try {
       const [quota, exchangeRate] = await Promise.all([
         getQuota({
           localTodayTokens: localTodayTrackedTokens(),
-          sourceId: displayPreferences.quotaSourceId
+          sourceId: displayPreferences.quotaSourceId,
+          ensureAuthenticated: options.ensureAuthenticated === true,
+          onPhase: options.onPhase,
+          onLoginUrl: options.onLoginUrl
         }),
         getUsdCnyRate()
       ]);
@@ -1101,7 +1109,6 @@ function getQuotaPayload(options = {}) {
 
 function startFixedQuotaRefresh() {
   clearInterval(quotaRefreshTimer);
-  refreshQuotaSnapshot().catch(() => {});
   quotaRefreshTimer = setInterval(() => refreshQuotaSnapshot().catch(() => {}), 60_000);
 }
 
@@ -1625,6 +1632,98 @@ function showSettingsWindow(section = "quota") {
   else reveal();
 }
 
+function initializationStatePayload() {
+  return initializationController?.state() || {
+    status: initializationState?.status || "pending",
+    steps: { layout: "done", account: "pending", quota: "pending" },
+    error: initializationState?.error || null,
+    quotaSummary: null,
+    canRetry: false,
+    canReopenLogin: false
+  };
+}
+
+function notifyInitializationStateChanged(payload = initializationStatePayload()) {
+  if (initializationWindow && !initializationWindow.isDestroyed() && !initializationWindow.webContents.isDestroyed()) {
+    initializationWindow.webContents.send("initialization:stateChanged", payload);
+  }
+  clearTimeout(initializationReadyHideTimer);
+  if (payload.status === "ready") {
+    initializationReadyHideTimer = setTimeout(() => {
+      if (initializationWindow && !initializationWindow.isDestroyed()) initializationWindow.hide();
+    }, 1200);
+  }
+}
+
+function createInitializationWindow() {
+  if (initializationWindow && !initializationWindow.isDestroyed()) return initializationWindow;
+  initializationWindow = new BrowserWindow({
+    width: 560,
+    height: 520,
+    minWidth: 460,
+    minHeight: 420,
+    frame: false,
+    show: false,
+    resizable: true,
+    backgroundColor: "#071218",
+    title: `${PRODUCT_NAME} · 初始化`,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  initializationWindow.loadFile(path.join(__dirname, "../renderer/initialization.html"));
+  initializationWindow.on("close", (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    initializationWindow.hide();
+  });
+  initializationWindow.on("closed", () => {
+    initializationWindow = null;
+  });
+  return initializationWindow;
+}
+
+function showInitializationWindow() {
+  const target = createInitializationWindow();
+  const reveal = () => {
+    if (!target || target.isDestroyed()) return;
+    target.show();
+    target.focus();
+    target.webContents.send("initialization:stateChanged", initializationStatePayload());
+  };
+  if (target.webContents.isLoading()) target.once("ready-to-show", reveal);
+  else reveal();
+  return initializationStatePayload();
+}
+
+function setupInitializationController() {
+  initializationController = createInitializationController({
+    initialState: initializationState,
+    persist: (state) => {
+      try {
+        initializationState = saveInitializationState(initializationStatePath(), state);
+      } catch {
+        initializationState = state;
+      }
+      return initializationState;
+    },
+    openExternal: (url) => shell.openExternal(url),
+    getQuota: (options) => refreshQuotaSnapshot(options),
+    acceptQuota: async (quota) => {
+      const preferences = initialQuotaPreferences(quota, displayPreferences);
+      setDisplayPreferences(preferences);
+    },
+    onStateChanged: notifyInitializationStateChanged
+  });
+}
+
+function runFirstRunInitialization(options) {
+  if (!initializationController) setupInitializationController();
+  return initializationController.run(options);
+}
+
 function sanitizedSettingsChanges(value) {
   const input = value && typeof value === "object" ? value : {};
   const changes = {};
@@ -1920,6 +2019,7 @@ app.whenReady().then(async () => {
   if (quotaStatsLedger.needsRebuild) quotaStatsLedger = rebuildQuotaStatsLedger(quotaStatsLedger);
   lastTrayQuota = lastQuotaPayload;
   setDisplayPreferences({});
+  setupInitializationController();
   try {
     fs.writeFileSync(quotaStatsLedgerPath(), JSON.stringify(quotaStatsLedger), "utf8");
   } catch {
@@ -1943,6 +2043,16 @@ app.whenReady().then(async () => {
     const diagnostics = sanitizedDiagnosticsPayload();
     clipboard.writeText(JSON.stringify(diagnostics, null, 2));
     return { copied: true, generatedAt: diagnostics.generatedAt };
+  });
+  ipcMain.handle("initialization:state:get", () => initializationStatePayload());
+  ipcMain.handle("initialization:retry", () => {
+    showInitializationWindow();
+    return runFirstRunInitialization({ force: true });
+  });
+  ipcMain.handle("initialization:login:reopen", () => initializationController.reopenLogin());
+  ipcMain.handle("initialization:close", (event) => {
+    if (initializationWindow?.webContents === event.sender) initializationWindow.hide();
+    return initializationStatePayload();
   });
   ipcMain.handle("window:alwaysOnTop:get", () => isAlwaysOnTop);
   ipcMain.handle("window:alwaysOnTop:set", (_event, value) => setAlwaysOnTop(value));
@@ -1987,6 +2097,16 @@ app.whenReady().then(async () => {
   createWindow();
   await createTray();
   if (lastQuotaPayload) updateTrayQuota(lastQuotaPayload);
+  if (initializationState.accountBootstrapVersion < ACCOUNT_BOOTSTRAP_VERSION) {
+    showInitializationWindow();
+    runFirstRunInitialization().catch(() => {});
+  } else {
+    refreshQuotaSnapshot().catch((error) => {
+      if (error?.code !== "CODEX_AUTH_REQUIRED") return;
+      showInitializationWindow();
+      runFirstRunInitialization({ force: true }).catch(() => {});
+    });
+  }
   startFixedQuotaRefresh();
   startUsageInsightsRefresh();
   pollMagnetCursor();
@@ -2014,6 +2134,7 @@ app.on("before-quit", () => {
   clearTimeout(magnetProgrammaticMoveResetTimer);
   clearTimeout(updateCheckTimer);
   clearTimeout(magnetMoveSettleTimer);
+  clearTimeout(initializationReadyHideTimer);
   stopMagnetAnimation();
   saveWindowState(mainWindow, windowStatePath());
   saveWindowState(statsWindow, statsWindowStatePath());
