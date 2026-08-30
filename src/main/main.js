@@ -2,7 +2,13 @@ const { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, screen, net } = 
 const fs = require("node:fs");
 const path = require("node:path");
 const { getQuota, mergeTokenUsageSnapshot } = require("./quota-service");
-const { displayPlanType } = require("./quota-normalizer");
+const { displayPlanType, normalizeRateLimitResponse } = require("./quota-normalizer");
+const {
+  emptyHistoryData,
+  loadHistoryData,
+  recordQuotaSnapshot,
+  projectHistoryForSource
+} = require("./quota-history-service");
 const { createModelUsageService } = require("./model-usage-service");
 const { createModelPriceService, enrichModelUsage } = require("./model-price-service");
 const { formatDisplayVersion, releaseFromGitHub, shouldNotifyUpdate } = require("./update-service");
@@ -39,7 +45,7 @@ let isAlwaysOnTop = true;
 let lastTrayQuota = null;
 let mainWindowStateSaveTimer;
 let statsWindowStateSaveTimer;
-let usageHistory = { primary: [], secondary: [] };
+let usageHistory = emptyHistoryData();
 let quotaStatsLedger = defaultQuotaStatsLedger();
 let displayPreferences = defaultDisplayPreferences();
 let exchangeRateCache = null;
@@ -423,7 +429,12 @@ function localMondayWeekStart(value = new Date()) {
 }
 
 function consumptionFromHistory(source, startAt, endAt = Date.now()) {
-  const points = (Array.isArray(usageHistory[source]) ? usageHistory[source] : [])
+  const activeHistory = projectHistoryForSource(usageHistory, lastQuotaPayload || {
+    id: displayPreferences.quotaSourceId,
+    primary: null,
+    secondary: null
+  });
+  const points = (Array.isArray(activeHistory[source]) ? activeHistory[source] : [])
     .filter((point) => Number.isFinite(Number(point?.at)) && Number.isFinite(Number(point?.usedPercent)) && point?.resetsAt)
     .sort((left, right) => Number(left.at) - Number(right.at));
   const groups = new Map();
@@ -578,10 +589,30 @@ function loadQuotaSnapshot() {
     const saved = JSON.parse(fs.readFileSync(quotaSnapshotPath(), "utf8"));
     const fetchedAt = new Date(saved?.fetchedAt).getTime();
     if (!Number.isFinite(fetchedAt) || (!saved?.primary && !saved?.secondary)) return null;
+    let normalizedSaved = saved;
+    const savedWindows = [saved.primary, saved.secondary].filter(Boolean);
+    const canReclassify = !Array.isArray(saved.sources) && savedWindows.length > 0 &&
+      savedWindows.every((window) => Number.isFinite(Number(window?.windowDurationMins)));
+    if (canReclassify) {
+      const limitId = normalizeQuotaSourceId(saved.activeSourceId || saved.limitId) || "codex";
+      const normalizedQuota = normalizeRateLimitResponse({
+        rateLimitsByLimitId: {
+          [limitId]: {
+            limitName: saved.limitName,
+            planType: saved.planType,
+            rateLimitReachedType: saved.reachedType,
+            credits: saved.credits,
+            primary: saved.primary,
+            secondary: saved.secondary
+          }
+        }
+      }, limitId);
+      normalizedSaved = { ...saved, ...normalizedQuota, fetchedAt: saved.fetchedAt };
+    }
     return {
-      ...saved,
-      activeSourceId: normalizeQuotaSourceId(saved.activeSourceId || saved.limitId) || "codex",
-      planLabel: saved.planLabel || displayPlanType(saved.planType)
+      ...normalizedSaved,
+      activeSourceId: normalizeQuotaSourceId(normalizedSaved.activeSourceId || normalizedSaved.limitId) || "codex",
+      planLabel: normalizedSaved.planLabel || displayPlanType(normalizedSaved.planType)
     };
   } catch {
     return null;
@@ -598,11 +629,7 @@ function saveQuotaSnapshot(payload) {
 
 function currentQuotaPayload(payload = lastQuotaPayload) {
   if (!payload) return null;
-  const activeHistory = Object.fromEntries(["primary", "secondary"].map((source) => {
-    const resetsAt = payload?.[source]?.resetsAt;
-    const points = Array.isArray(usageHistory[source]) ? usageHistory[source] : [];
-    return [source, resetsAt ? points.filter((point) => point?.resetsAt === resetsAt) : []];
-  }));
+  const activeHistory = projectHistoryForSource(usageHistory, payload);
   const modelUsage = modelUsageSnapshot && modelPriceService
     ? enrichModelUsage(modelUsageSnapshot, modelPriceService.snapshot())
     : payload.modelUsage || null;
@@ -621,44 +648,16 @@ function usageHistoryPath() {
 function loadUsageHistory() {
   try {
     const saved = JSON.parse(fs.readFileSync(usageHistoryPath(), "utf8"));
-    return {
-      primary: Array.isArray(saved.primary) ? saved.primary.slice(-20_000) : [],
-      secondary: Array.isArray(saved.secondary) ? saved.secondary.slice(-20_000) : []
-    };
+    return loadHistoryData(saved);
   } catch {
-    return { primary: [], secondary: [] };
+    return emptyHistoryData();
   }
 }
 
 function recordUsageSnapshot(quota) {
-  let changed = false;
-  for (const key of ["primary", "secondary"]) {
-    const quotaWindow = quota?.[key];
-    if (!quotaWindow || !Number.isFinite(Number(quotaWindow.usedPercent)) || !quotaWindow.resetsAt) continue;
-
-    const resetsAt = String(quotaWindow.resetsAt);
-    const currentSeries = Array.isArray(usageHistory[key]) ? usageHistory[key] : [];
-    const matchingSeries = currentSeries.filter((point) => point?.resetsAt === resetsAt);
-
-    const now = Date.now();
-    const minimumInterval = key === "primary" ? 55_000 : 15 * 60_000;
-    const previous = matchingSeries.at(-1);
-    if (!previous || now - Number(previous.at) >= minimumInterval) {
-      currentSeries.push({
-        at: now,
-        usedPercent: Math.max(0, Math.min(100, Number(quotaWindow.usedPercent))),
-        resetsAt,
-        windowDurationMins: Number(quotaWindow.windowDurationMins) || (key === "primary" ? 300 : 10_080)
-      });
-      const cutoff = now - 400 * 24 * 60 * 60 * 1000;
-      usageHistory[key] = currentSeries
-        .filter((point) => Number(point?.at) >= cutoff)
-        .slice(-20_000);
-      changed = true;
-    }
-  }
-
-  if (changed) {
+  const result = recordQuotaSnapshot(usageHistory, quota);
+  usageHistory = result.history;
+  if (result.changed) {
     try {
       fs.writeFileSync(usageHistoryPath(), JSON.stringify(usageHistory), "utf8");
     } catch {
@@ -1836,10 +1835,10 @@ app.whenReady().then(async () => {
   });
   displayPreferences = loadDisplayPreferences();
   isAlwaysOnTop = displayPreferences.alwaysOnTop !== false;
+  lastQuotaPayload = loadQuotaSnapshot();
   usageHistory = loadUsageHistory();
   quotaStatsLedger = loadQuotaStatsLedger();
   if (quotaStatsLedger.needsRebuild) quotaStatsLedger = rebuildQuotaStatsLedger(quotaStatsLedger);
-  lastQuotaPayload = loadQuotaSnapshot();
   lastTrayQuota = lastQuotaPayload;
   setDisplayPreferences({});
   try {
