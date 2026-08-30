@@ -1,41 +1,16 @@
-const { spawn } = require("node:child_process");
-const fs = require("node:fs");
-const path = require("node:path");
 const { normalizeRateLimitResponse } = require("./quota-normalizer");
+const { createAppServerSession, sanitizeAppServerError } = require("./app-server-session");
 
-const DEFAULT_TIMEOUT_MS = 12000;
-
-function resolveCodexPath() {
-  const localAppData = process.env.LOCALAPPDATA || "";
-  const codexBinRoot = path.join(localAppData, "OpenAI", "Codex", "bin");
-  const candidates = [
-    process.env.CODEX_CLI_PATH,
-    path.join(codexBinRoot, "codex.exe"),
-    ...findVersionedCodexExecutables(codexBinRoot)
-  ].filter(Boolean);
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-
-  return "codex";
-}
-
-function findVersionedCodexExecutables(binRoot) {
-  try {
-    return fs
-      .readdirSync(binRoot, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => path.join(binRoot, entry.name, "codex.exe"))
-      .filter((candidate) => fs.existsSync(candidate))
-      .sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs);
-  } catch {
-    return [];
+class CodexAuthRequiredError extends Error {
+  constructor(message = "需要登录 Codex 才能读取额度。") {
+    super(message);
+    this.name = "CodexAuthRequiredError";
+    this.code = "CODEX_AUTH_REQUIRED";
   }
 }
 
 async function getQuota(options = {}) {
-  const { rateLimits: response, accountUsage } = await requestAccountData();
+  const { rateLimits: response, accountUsage } = await requestAccountData(options);
   const localTodayTokens = options.localTodayTokens ?? null;
 
   return {
@@ -149,115 +124,64 @@ function normalizeSnapshot(snapshot) {
   });
 }
 
-function requestAccountData() {
-  const codexPath = resolveCodexPath();
-  const child = spawn(codexPath, ["app-server", "--listen", "stdio://"], {
-    stdio: ["pipe", "pipe", "pipe"],
-    windowsHide: true
-  });
-
-  let buffer = "";
-  let stderr = "";
-  let nextId = 1;
-  const pending = new Map();
-
-  const cleanup = () => {
-    for (const request of pending.values()) {
-      clearTimeout(request.timer);
-    }
-    pending.clear();
-    if (!child.killed) child.kill();
-  };
-
-  const send = (method, params) => {
-    const id = nextId++;
-    const payload = params === undefined ? { id, method } : { id, method, params };
-    child.stdin.write(`${JSON.stringify(payload)}\n`);
-
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        pending.delete(id);
-        reject(new Error(`Codex request timed out: ${method}`));
-      }, DEFAULT_TIMEOUT_MS);
-      pending.set(id, { resolve, reject, timer });
-    });
-  };
-
-  child.stdout.on("data", (chunk) => {
-    buffer += chunk.toString("utf8");
-    let newlineIndex;
-    while ((newlineIndex = buffer.indexOf("\n")) >= 0) {
-      const line = buffer.slice(0, newlineIndex).trim();
-      buffer = buffer.slice(newlineIndex + 1);
-      if (!line) continue;
-      handleMessage(line, pending);
-    }
-  });
-
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk.toString("utf8");
-  });
-
-  return new Promise((resolve, reject) => {
-    child.once("error", (error) => {
-      cleanup();
-      reject(error);
-    });
-
-    child.once("exit", (code) => {
-      if (pending.size > 0) {
-        cleanup();
-        reject(new Error(stderr || `Codex app-server exited with code ${code}`));
-      }
-    });
-
-    (async () => {
-      try {
-        await send("initialize", {
-          clientInfo: {
-            name: "codex-led-widget",
-            title: "Codex 额度桌面助手",
-            version: "0.1.0"
-          },
-          capabilities: null
-        });
-        const rateLimits = await send("account/rateLimits/read");
-        let accountUsage = null;
-        try {
-          accountUsage = await send("account/usage/read");
-        } catch {
-          // Token statistics are optional; quota display must continue to work.
-        }
-        cleanup();
-        resolve({ rateLimits, accountUsage });
-      } catch (error) {
-        cleanup();
-        reject(new Error(stderr || error.message));
-      }
-    })();
-  });
-}
-
-function handleMessage(line, pending) {
-  let message;
+async function requestAccountData(options = {}) {
+  const session = (options.createSession || createAppServerSession)();
+  const onPhase = typeof options.onPhase === "function" ? options.onPhase : () => {};
+  const onLoginUrl = typeof options.onLoginUrl === "function" ? options.onLoginUrl : () => {};
   try {
-    message = JSON.parse(line);
-  } catch {
-    return;
-  }
+    await session.start();
+    onPhase("checking");
+    let accountState = await session.request("account/read", { refreshToken: true });
 
-  if (!Object.prototype.hasOwnProperty.call(message, "id")) return;
-  const request = pending.get(message.id);
-  if (!request) return;
+    if (!accountState?.account && options.ensureAuthenticated) {
+      onPhase("login_required");
+      const login = await session.request("account/login/start", {
+        type: "chatgpt",
+        useHostedLoginSuccessPage: true,
+        appBrand: "codex"
+      });
+      if (!login?.loginId || !login?.authUrl) {
+        throw new Error("Codex 未返回有效的登录会话。");
+      }
+      await Promise.resolve(onLoginUrl(login.authUrl));
+      onPhase("waiting_for_login");
+      const completed = await session.waitForNotification(
+        "account/login/completed",
+        (params) => params?.loginId === login.loginId,
+        300000
+      );
+      if (!completed?.success) {
+        throw new Error(completed?.error || "Codex 登录未完成。");
+      }
+      accountState = await session.request("account/read", { refreshToken: true });
+    }
 
-  clearTimeout(request.timer);
-  pending.delete(message.id);
+    if (!accountState?.account) throw new CodexAuthRequiredError();
 
-  if (message.error) {
-    request.reject(new Error(message.error.message || JSON.stringify(message.error)));
-  } else {
-    request.resolve(message.result);
+    onPhase("refreshing");
+    const rateLimits = await session.request("account/rateLimits/read");
+    let accountUsage = null;
+    try {
+      accountUsage = await session.request("account/usage/read");
+    } catch {
+      // Token statistics are optional; quota display must continue to work.
+    }
+    return { rateLimits, accountUsage };
+  } catch (error) {
+    if (error?.code === "CODEX_AUTH_REQUIRED") throw error;
+    const wrapped = new Error(sanitizeAppServerError(error));
+    if (error?.code !== undefined) wrapped.code = error.code;
+    throw wrapped;
+  } finally {
+    session.close();
   }
 }
 
-module.exports = { getQuota, normalizeSnapshot, normalizeAccountUsage, mergeTokenUsageSnapshot };
+module.exports = {
+  CodexAuthRequiredError,
+  getQuota,
+  mergeTokenUsageSnapshot,
+  normalizeAccountUsage,
+  normalizeSnapshot,
+  requestAccountData
+};
