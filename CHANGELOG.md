@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.1 - 2026-08-30
+
+- Completed the Codex App Server handshake by sending the required `initialized` notification before account and rate-limit requests.
+- Added forced account refresh plus the official ChatGPT browser-login flow for first-run setup, without persisting credentials or account identifiers.
+- Added a secure initialization window with progress, retry, reopen-login, settings, error, and success states.
+- Added a versioned one-time layout recovery that disables broken legacy magnetic docking, removes unsafe edge coordinates, preserves all user content settings, and places the widget safely on screen.
+- Marked restored quota snapshots stale until the first live refresh succeeds.
+- Added protocol, initialization-state, controller, renderer, URL-validation, privacy-redaction, and responsive-layout regression coverage.
+
 ## 1.1.0 - 2026-08-30
 
 - Fixed Pro quota detection by classifying every quota window from the server-provided duration instead of assuming the first bucket is 5 hours and the second is 7 days.
