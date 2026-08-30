@@ -1,6 +1,7 @@
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { normalizeRateLimitResponse } = require("./quota-normalizer");
 
 const DEFAULT_TIMEOUT_MS = 12000;
 
@@ -36,17 +37,9 @@ function findVersionedCodexExecutables(binRoot) {
 async function getQuota(options = {}) {
   const { rateLimits: response, accountUsage } = await requestAccountData();
   const localTodayTokens = options.localTodayTokens ?? null;
-  const snapshot =
-    response.rateLimitsByLimitId?.codex ||
-    response.rateLimits ||
-    firstSnapshot(response.rateLimitsByLimitId);
-
-  if (!snapshot) {
-    throw new Error("Codex did not return a rate-limit snapshot.");
-  }
 
   return {
-    ...normalizeSnapshot(snapshot),
+    ...normalizeRateLimitResponse(response, options.sourceId || "codex"),
     tokenUsage: normalizeAccountUsage(accountUsage, localTodayTokens)
   };
 }
@@ -148,46 +141,12 @@ function localDateKey(value) {
   return `${year}-${month}-${day}`;
 }
 
-function firstSnapshot(map) {
-  if (!map || typeof map !== "object") return null;
-  const firstKey = Object.keys(map)[0];
-  return firstKey ? map[firstKey] : null;
-}
-
 function normalizeSnapshot(snapshot) {
-  const primary = normalizeWindow(snapshot.primary);
-  const secondary = normalizeWindow(snapshot.secondary);
-  const activeWindow = primary || secondary;
-
-  return {
-    limitId: snapshot.limitId || "codex",
-    limitName: snapshot.limitName || "Codex",
-    planType: snapshot.planType || "unknown",
-    reachedType: snapshot.rateLimitReachedType || null,
-    credits: snapshot.credits || null,
-    primary,
-    secondary,
-    remainingPercent: activeWindow ? activeWindow.remainingPercent : null,
-    usedPercent: activeWindow ? activeWindow.usedPercent : null,
-    resetsAt: activeWindow ? activeWindow.resetsAt : null,
-    fetchedAt: new Date().toISOString()
-  };
-}
-
-function normalizeWindow(window) {
-  if (!window) return null;
-  const usedPercent = clampPercent(Number(window.usedPercent || 0));
-  return {
-    usedPercent,
-    remainingPercent: clampPercent(100 - usedPercent),
-    windowDurationMins: window.windowDurationMins ?? null,
-    resetsAt: window.resetsAt ? new Date(window.resetsAt * 1000).toISOString() : null
-  };
-}
-
-function clampPercent(value) {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, Math.round(value)));
+  return normalizeRateLimitResponse({
+    rateLimitsByLimitId: {
+      [snapshot?.limitId || "codex"]: snapshot
+    }
+  });
 }
 
 function requestAccountData() {
