@@ -18,7 +18,8 @@
 
 ## 主要功能
 
-- 5 小时额度与 7 天总额度实时显示。
+- 按 Codex 服务端返回的真实窗口时长识别 5 小时与 7 天额度；Pro 账号只有 7 天窗口时只显示 7 天卡，不再误标为 5 小时额度。
+- 支持在设置页切换 Codex、Spark 等服务端返回的额度来源，每个来源的窗口和历史记录彼此独立。
 - 圆球、电池两种能量仪表；电池支持横向和竖向。
 - 窗口、卡片、左右区域和仪表都可自由缩放；电池、圆球和卡片支持四边与四角拖动，并自动记住位置、尺寸与显示选项。
 - 可选贴边磁吸：支持屏幕上下左右四边，鼠标移开后立即开始收起、移回唤醒；左右吸附时仪表可自动换到靠屏幕内侧，也可手动固定在左侧或右侧。两种方向会镜像保持相同分栏比例；横向电池磁吸时自动化为只显示剩余额度的精简横条。
@@ -31,8 +32,9 @@
 - GPT/GitHub 风格的格子消耗日历：单月模式使用放大的 7 列日期格；多月模式是一条可左右拖动、跨年份首尾连续并按需延伸的每日格子时间线，选中月份默认居中高亮、相邻月份自动降低亮度；年视图可在“12个月大格”和“全年每日小格”间切换；悬停可查看当前消耗，单位支持总额度%、Token、美元、人民币。
 - 消耗图在关闭期间仍持续记录，重新开启或重启应用不会清空同一额度周期的历史。
 - 统计页秒开最近一次完整结果；应用在后台每 60 秒统一刷新，避免打开页面时重复扫描。
-- 右键菜单可开关悬浮窗各区域、切换数据、调整排列；连续修改开关时会自动回到当前子菜单。日历单位、范围和月/年样式集中放在统计子页面，不在托盘菜单重复出现；所有设置均保存在本机。
-- “悬浮窗卡片”子菜单提供独立总开关：关闭时只隐藏已勾选卡片，不改变各卡片的勾选组合；重新开启时只恢复原来勾选的卡片。无卡片时圆球、横向电池和竖向电池会随窗口空间自适应到合理尺寸。
+- 右键菜单改为扁平快捷菜单，常用的显示/隐藏、刷新、置顶、统计和设置都可直接点击，不再通过会闪烁或错位的多层原生子菜单操作。
+- 独立设置窗口集中管理额度来源、仪表、卡片、图表、统计和成本显示；修改即时保存，5 小时/7 天高级选项按需展开，重复打开只复用同一个设置窗口。
+- 设置页的“悬浮窗卡片”提供独立总开关：关闭时只隐藏已勾选卡片，不改变各卡片的勾选组合；重新开启时只恢复原来勾选的卡片。无卡片时圆球、横向电池和竖向电池会随窗口空间自适应到合理尺寸。
 - 启动后会检查 GitHub 最新正式发行版；发现更高版本时弹窗提醒，同一个新版本只提醒一次。
 
 ## 来源与鸣谢
@@ -44,9 +46,9 @@
 ## 下载与使用
 
 1. 打开仓库的 [Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases) 页面。
-2. 下载 `Codex-Quota-Desktop-Assistant-1.0-Windows-x64-Setup.exe`。
+2. 下载 `Codex-Quota-Desktop-Assistant-1.1.0-Windows-x64-Setup.exe`。
 3. 确认 Windows 版 Codex 已安装并登录，然后双击安装。
-4. 右键悬浮窗或系统托盘图标即可打开完整设置菜单。
+4. 右键悬浮窗或系统托盘图标打开快捷菜单，再选择“设置”进入完整设置窗口。
 
 第一次使用或想了解全部功能，请查看 [《Codex 额度桌面助手使用说明书》](USER_GUIDE.zh-CN.md)。
 
@@ -58,6 +60,8 @@
 
 - “今日”按本地时间每天 00:00 重新开始。
 - “本周”按本地时间每周一 00:00 重新开始。
+- 5 小时与 7 天并非按数组顺序猜测，而是按 Codex 返回的 `windowDurationMins` 识别；当前来源没有某个窗口时，对应卡片和控制项会隐藏或说明不可用。
+- 切换额度来源不会混用消耗曲线；每个来源、每个窗口分别保存历史。
 - 日历默认显示当前月份，可直接选择其他月份；年视图提供 12 个月汇总与全年每日明细两种样式。只有本工具开始记录后的额度百分比数据可用于历史格子。
 - Token 总数来自账户/本机可读取的使用记录；模型明细来自本机 Codex 会话日志，因此会显示单独的统计起始时间。
 - 金额按各模型当前官方输入、缓存输入、缓存写入和输出价格做 API 等值估算，不代表订阅账单或实际扣费；无法取得价格的模型不会混入金额。
@@ -68,6 +72,7 @@
 - 使用本机已有的 Codex 登录状态，不要求输入或保存认证 Token。
 - 额度、Token 历史、窗口设置与统计快照保存在当前电脑。
 - 不上传额度或 Token 使用数据。
+- “复制诊断信息”只包含版本、额度来源、窗口时长、百分比、刷新状态等白名单字段，不包含认证信息、账号标识或本机路径。
 - 应用只会向 OpenAI 官方模型文档读取公开价格、向公开汇率接口读取 USD/CNY，并向 GitHub Releases 检查最新正式版本；这些请求不会携带你的用量数据。
 
 ## 本地开发
@@ -84,15 +89,15 @@ pnpm run dev
 pnpm run release
 ```
 
-输出位于 `dist/Codex-Quota-Desktop-Assistant-1.0-Windows-x64-Setup.exe`。安装后的程序直接从安装目录运行，不会在每次启动时向临时目录解压完整副本。
+输出位于 `dist/Codex-Quota-Desktop-Assistant-1.1.0-Windows-x64-Setup.exe`。安装后的程序直接从安装目录运行，不会在每次启动时向临时目录解压完整副本。
 
 ## GitHub 发布
 
 正式版本由维护者在本地完成检查和构建，再将唯一的 Windows `.exe` 上传到 GitHub Releases。
 
 ```powershell
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 ## 项目结构
@@ -112,7 +117,7 @@ scripts/                 visual and behavior checks
 
 ## English
 
-Codex Quota Desktop Assistant is a customizable Windows desktop assistant for Codex quota monitoring. It includes resizable orb and battery meters, 5-hour and 7-day usage charts, local quota history, token and estimated API cost statistics, and a GitHub-style contribution calendar.
+Codex Quota Desktop Assistant is a customizable Windows desktop assistant for Codex quota monitoring. It classifies quota windows by the server-provided duration, supports selectable quota sources, and includes resizable orb and battery meters, local quota history, token and estimated API cost statistics, and a GitHub-style contribution calendar.
 
 The statistics page opens from the last complete local snapshot and shares one fixed 60-second background refresh with the widget. Optional four-edge magnetic docking starts retracting immediately after pointer leave and restores the widget on hover. Window size, position, layout, and display preferences are remembered locally.
 
@@ -122,7 +127,7 @@ This project is a derivative of [xicunwus2025-sys/codex-led-widget](https://gith
 
 ### Download
 
-Download `Codex-Quota-Desktop-Assistant-1.0-Windows-x64-Setup.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed, signed-in Codex app are required. The installed app runs directly from its installation directory instead of unpacking a portable copy on every launch. A newer official release triggers one notification per version.
+Download `Codex-Quota-Desktop-Assistant-1.1.0-Windows-x64-Setup.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed, signed-in Codex app are required. The installed app runs directly from its installation directory instead of unpacking a portable copy on every launch. A newer official release triggers one notification per version.
 
 ### Privacy
 

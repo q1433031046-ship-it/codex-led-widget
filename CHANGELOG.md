@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0 - 2026-08-30
+
+- Fixed Pro quota detection by classifying every quota window from the server-provided duration instead of assuming the first bucket is 5 hours and the second is 7 days.
+- Added selectable Codex quota sources and source-aware history storage so Codex, Spark, and future limit buckets do not share chart series.
+- Hid unavailable 5-hour or 7-day cards and disabled their settings with an explanation instead of rendering missing data as zero.
+- Replaced the nested native context menu and its delayed submenu-reopen workaround with a stable flat quick menu.
+- Added a secure, single-instance settings window with immediate persistence, source switching with rollback, grouped advanced controls, and responsive layout.
+- Preserved the last successful quota snapshot on refresh failure and marked it stale.
+- Added sanitized diagnostic copying that excludes authentication values, account identifiers, and local paths.
+- Added regression coverage for duration classification, source selection, history isolation, the flat quick menu, settings IPC, and diagnostic redaction.
+
 ## 1.0 - 2026-08-29
 
 - Replaced the portable runtime with a per-user NSIS installer so normal launches run directly from the installation directory and no longer unpack full Electron copies into the Windows temporary directory.
