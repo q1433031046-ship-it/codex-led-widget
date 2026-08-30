@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, screen, net } = 
 const fs = require("node:fs");
 const path = require("node:path");
 const { getQuota, mergeTokenUsageSnapshot } = require("./quota-service");
+const { displayPlanType } = require("./quota-normalizer");
 const { createModelUsageService } = require("./model-usage-service");
 const { createModelPriceService, enrichModelUsage } = require("./model-price-service");
 const { formatDisplayVersion, releaseFromGitHub, shouldNotifyUpdate } = require("./update-service");
@@ -82,7 +83,8 @@ const MAGNET_ANIMATION_MS = 210;
 
 function defaultDisplayPreferences() {
   return {
-    preferenceVersion: 2,
+    preferenceVersion: 3,
+    quotaSourceId: "codex",
     alwaysOnTop: true,
     primaryCardEnabled: true,
     secondaryCardEnabled: true,
@@ -220,7 +222,8 @@ function loadDisplayPreferences() {
       }
     }
     return {
-      preferenceVersion: 2,
+      preferenceVersion: 3,
+      quotaSourceId: normalizeQuotaSourceId(saved.quotaSourceId) || defaults.quotaSourceId,
       alwaysOnTop: typeof saved.alwaysOnTop === "boolean" ? saved.alwaysOnTop : defaults.alwaysOnTop,
       primaryCardEnabled: typeof saved.primaryCardEnabled === "boolean"
         ? saved.primaryCardEnabled
@@ -283,6 +286,12 @@ function normalizeCardSizing(value) {
     normalized[key] = Number.isFinite(weight) ? Math.max(0.15, Math.min(8, weight)) : 1;
   }
   return normalized;
+}
+
+function normalizeQuotaSourceId(value) {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  return /^[a-zA-Z0-9_.:-]{1,80}$/.test(trimmed) ? trimmed : "";
 }
 
 const QUOTA_STAT_KEYS = ["todayPrimary", "todayTotal", "weekPrimary", "lifetimeTotal"];
@@ -569,7 +578,11 @@ function loadQuotaSnapshot() {
     const saved = JSON.parse(fs.readFileSync(quotaSnapshotPath(), "utf8"));
     const fetchedAt = new Date(saved?.fetchedAt).getTime();
     if (!Number.isFinite(fetchedAt) || (!saved?.primary && !saved?.secondary)) return null;
-    return saved;
+    return {
+      ...saved,
+      activeSourceId: normalizeQuotaSourceId(saved.activeSourceId || saved.limitId) || "codex",
+      planLabel: saved.planLabel || displayPlanType(saved.planType)
+    };
   } catch {
     return null;
   }
@@ -677,6 +690,10 @@ function setDisplayPreferences(changes, options = {}) {
   displayPreferences = {
     ...displayPreferences,
     ...changes,
+    preferenceVersion: 3,
+    ...(Object.hasOwn(changes, "quotaSourceId") ? {
+      quotaSourceId: normalizeQuotaSourceId(changes.quotaSourceId) || displayPreferences.quotaSourceId || "codex"
+    } : {}),
     ...(Object.hasOwn(changes, "cardsMasterEnabled") ? { cardsMasterEnabled: Boolean(changes.cardsMasterEnabled) } : {}),
     ...(Object.hasOwn(changes, "magneticEnabled") ? { magneticEnabled: Boolean(changes.magneticEnabled) } : {}),
     ...(Object.hasOwn(changes, "meterSideMode") ? {
@@ -1003,9 +1020,15 @@ async function refreshQuotaSnapshot() {
   quotaRefreshPromise = (async () => {
     try {
       const [quota, exchangeRate] = await Promise.all([
-        getQuota({ localTodayTokens: localTodayTrackedTokens() }),
+        getQuota({
+          localTodayTokens: localTodayTrackedTokens(),
+          sourceId: displayPreferences.quotaSourceId
+        }),
         getUsdCnyRate()
       ]);
+      if (quota.activeSourceId && quota.activeSourceId !== displayPreferences.quotaSourceId) {
+        setDisplayPreferences({ quotaSourceId: quota.activeSourceId }, { rebuildMenu: false });
+      }
       recordUsageSnapshot(quota);
       recordQuotaStatsSnapshot(quota);
       const tokenUsage = mergeTokenUsageSnapshot(quota.tokenUsage, lastQuotaPayload?.tokenUsage, {

@@ -10,6 +10,13 @@ const statsHtml = fs.readFileSync(path.join(root, "src", "renderer", "stats.html
 const statsCss = fs.readFileSync(path.join(root, "src", "renderer", "stats.css"), "utf8");
 const renderer = fs.readFileSync(path.join(root, "src", "renderer", "renderer.js"), "utf8");
 const widgetCss = fs.readFileSync(path.join(root, "src", "renderer", "styles.css"), "utf8");
+const quotaDisplay = fs.readFileSync(path.join(root, "src", "renderer", "quota-display.js"), "utf8");
+
+assert.match(main, /preferenceVersion:\s*3/);
+assert.match(main, /quotaSourceId:\s*"codex"/);
+assert.match(main, /sourceId:\s*displayPreferences\.quotaSourceId/);
+assert.match(renderer, /quotaDisplayUtils\.selectMeterWindow/);
+assert.match(quotaDisplay, /preferred\s*\|\|\s*fallback\s*\|\|\s*null/);
 
 const calendarHandlerStart = main.indexOf('ipcMain.handle("ui:calendarPreferences:set"');
 const calendarHandlerEnd = main.indexOf('\n  ipcMain.on("ui:contextMenu:show"', calendarHandlerStart);

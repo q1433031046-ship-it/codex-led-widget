@@ -824,6 +824,7 @@ function render() {
   if (!quota) return;
   applyAccents();
   const labels = t();
+  elements.currentHeading.textContent = `${labels.current} · ${quota.limitName || quota.activeSourceId || "Codex"}`;
   const metrics = Object.fromEntries(elements.quotaMetrics.map((metric) => [metric.dataset.statKey, metric]));
   for (const key of preferences.quotaStatOrder) elements.quotaMetricGrid.appendChild(metrics[key]);
   for (const key of QUOTA_STAT_KEYS) {
@@ -835,7 +836,10 @@ function render() {
   elements.trackingSince.textContent = started && Number.isFinite(started.getTime()) ? `${labels.tracking} ${started.toLocaleDateString(language === "zh" ? "zh-CN" : "en-US")}` : "";
 
   for (const [source, valueElement, bar] of [["primary", elements.primaryWindowValue, elements.primaryWindowBar], ["secondary", elements.secondaryWindowValue, elements.secondaryWindowBar]]) {
-    const remaining = Number(quota[source]?.remainingPercent);
+    const card = valueElement.closest(".window-card");
+    if (card) card.hidden = !quota[source];
+    const rawRemaining = quota[source]?.remainingPercent;
+    const remaining = rawRemaining === null || rawRemaining === undefined ? NaN : Number(rawRemaining);
     valueElement.textContent = Number.isFinite(remaining) ? `${labels.used} ${100 - remaining}% · ${labels.remaining} ${remaining}%` : "--";
     bar.style.width = Number.isFinite(remaining) ? `${remaining}%` : "0%";
   }

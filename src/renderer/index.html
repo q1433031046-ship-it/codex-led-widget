@@ -173,10 +173,18 @@
             const primaryReset = new Date(now + 3.4 * 3600000).toISOString();
             const secondaryReset = new Date(now + 6.7 * 86400000).toISOString();
             return {
+              activeSourceId: "codex",
+              limitId: "codex",
+              limitName: "Codex",
               planType: "plus",
+              planLabel: "Plus",
+              sources: [
+                { id: "codex", label: "Codex", shortTerm: true, weekly: true },
+                { id: "codex_bengalfox", label: "GPT-5.3-Codex-Spark", shortTerm: true, weekly: true }
+              ],
               remainingPercent: previewRemaining,
               fetchedAt: new Date().toISOString(),
-              primary: { usedPercent: 100 - previewRemaining, remainingPercent: previewRemaining, windowDurationMins: 300, resetsAt: primaryReset },
+              primary: previewParams.has("weeklyOnly") ? null : { usedPercent: 100 - previewRemaining, remainingPercent: previewRemaining, windowDurationMins: 300, resetsAt: primaryReset },
               secondary: { usedPercent: 4, remainingPercent: 96, windowDurationMins: 10080, resetsAt: secondaryReset },
               tokenUsage: { todayTokens: 1842000, weekTokens: 135758008, lifetimeTokens: 1135127724, todaySource: "local" },
               modelUsage: {
@@ -204,6 +212,8 @@
           getAlwaysOnTop: async () => true,
           setAlwaysOnTop: async (value) => Boolean(value),
           getDisplayPreferences: async () => ({
+            preferenceVersion: 3,
+            quotaSourceId: "codex",
             alwaysOnTop: true,
             primaryCardEnabled: !previewParams.has("statsOnly"),
             secondaryCardEnabled: !previewParams.has("statsOnly"),
@@ -284,6 +294,7 @@
         };
       }
     </script>
+    <script src="./quota-display.js"></script>
     <script src="./renderer.js"></script>
   </body>
 </html>

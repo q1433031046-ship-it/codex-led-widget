@@ -168,6 +168,8 @@ const liquidWave = {
   lastFrameAt: null
 };
 let displayPreferences = {
+  preferenceVersion: 3,
+  quotaSourceId: "codex",
   alwaysOnTop: true,
   primaryCardEnabled: true,
   secondaryCardEnabled: true,
@@ -277,6 +279,8 @@ function normalizeMeterSizing(value) {
 
 function applyDisplayPreferences(value) {
   displayPreferences = {
+    preferenceVersion: 3,
+    quotaSourceId: typeof value?.quotaSourceId === "string" ? value.quotaSourceId : "codex",
     alwaysOnTop: value?.alwaysOnTop !== false,
     primaryCardEnabled: typeof value?.primaryCardEnabled === "boolean"
       ? value.primaryCardEnabled
@@ -561,16 +565,18 @@ function updateLayoutMode() {
   const ratio = width / Math.max(1, height);
   const magnetMeterOnly = displayPreferences.magneticEnabled && displayPreferences.meterEnabled &&
     displayPreferences.meterStyle === "battery" && displayPreferences.batteryOrientation === "horizontal";
-  const primaryChart = !magnetMeterOnly && displayPreferences.primaryChartEnabled && displayPreferences.primaryCardEnabled;
-  const secondaryChart = !magnetMeterOnly && displayPreferences.secondaryChartEnabled && displayPreferences.secondaryCardEnabled;
+  const primaryAvailable = !lastQuota || Boolean(lastQuota.primary);
+  const secondaryAvailable = !lastQuota || Boolean(lastQuota.secondary);
+  const primaryChart = !magnetMeterOnly && primaryAvailable && displayPreferences.primaryChartEnabled && displayPreferences.primaryCardEnabled;
+  const secondaryChart = !magnetMeterOnly && secondaryAvailable && displayPreferences.secondaryChartEnabled && displayPreferences.secondaryCardEnabled;
   const chart = primaryChart || secondaryChart;
   const compact = !chart && displayPreferences.meterEnabled && Math.max(width, height) <= 220 && ratio >= 0.75 && ratio <= 1.33;
   const layout = chart ? "chart" : compact ? "compact" : "regular";
   const chartCompact = chart && height < 90;
   const meterVisible = displayPreferences.meterEnabled && !(chart && width < 150);
   const cardsVisible = displayPreferences.cardsMasterEnabled !== false;
-  const primaryHidden = magnetMeterOnly || !cardsVisible || !displayPreferences.primaryCardEnabled;
-  const secondaryHidden = magnetMeterOnly || !cardsVisible || !displayPreferences.secondaryCardEnabled;
+  const primaryHidden = magnetMeterOnly || !primaryAvailable || !cardsVisible || !displayPreferences.primaryCardEnabled;
+  const secondaryHidden = magnetMeterOnly || !secondaryAvailable || !cardsVisible || !displayPreferences.secondaryCardEnabled;
   const tokenRequested = cardsVisible && displayPreferences.tokenPanelEnabled &&
     (displayPreferences.tokenShowToday || displayPreferences.tokenShowWeek || displayPreferences.tokenShowLifetime);
   const tokenHidden = magnetMeterOnly || !tokenRequested;
@@ -1188,7 +1194,8 @@ function clearAccentProperties(target) {
 }
 
 function applyQuotaAccents(primaryRemaining, secondaryRemaining, meterRemaining) {
-  setAccentProperties(document.body, primaryRemaining);
+  const unifiedRemaining = Number.isFinite(Number(primaryRemaining)) ? primaryRemaining : secondaryRemaining;
+  setAccentProperties(document.body, unifiedRemaining);
   const independent = displayPreferences.colorMode === "independent" && displayPreferences.adaptiveColorEnabled;
   const assignments = [
     [elements.primaryCard, primaryRemaining],
@@ -1356,19 +1363,25 @@ function render() {
     return;
   }
 
-  const meterWindow = displayPreferences.meterSource === "secondary" ? lastQuota.secondary : lastQuota.primary;
-  const remaining = Number(meterWindow?.remainingPercent ?? lastQuota.remainingPercent);
-  const primaryRemaining = Number(lastQuota.primary?.remainingPercent);
-  const secondaryRemaining = Number(lastQuota.secondary?.remainingPercent);
-  const state = quotaState(primaryRemaining);
+  const meterWindow = window.quotaDisplayUtils.selectMeterWindow(lastQuota, displayPreferences.meterSource);
+  const remainingValue = meterWindow?.remainingPercent ?? lastQuota.remainingPercent;
+  const remaining = Number(remainingValue);
+  const primaryValue = lastQuota.primary?.remainingPercent;
+  const secondaryValue = lastQuota.secondary?.remainingPercent;
+  const primaryRemaining = primaryValue === null || primaryValue === undefined ? NaN : Number(primaryValue);
+  const secondaryRemaining = secondaryValue === null || secondaryValue === undefined ? NaN : Number(secondaryValue);
+  const stateRemaining = Number.isFinite(primaryRemaining)
+    ? primaryRemaining
+    : Number.isFinite(secondaryRemaining) ? secondaryRemaining : remaining;
+  const state = quotaState(stateRemaining);
   applyQuotaAccents(primaryRemaining, secondaryRemaining, remaining);
   document.body.dataset.state = state;
   elements.stateText.textContent = stateLabel(state);
-  elements.remaining.textContent = `${remaining}%`;
-  const meterLevel = `${Math.max(0, Math.min(100, remaining))}%`;
+  elements.remaining.textContent = Number.isFinite(remaining) ? `${remaining}%` : "--%";
+  const meterLevel = `${Number.isFinite(remaining) ? Math.max(0, Math.min(100, remaining)) : 0}%`;
   elements.liquidFill.style.setProperty("--level", meterLevel);
   elements.liquidMeter.style.setProperty("--level", meterLevel);
-  applyMeterEffects(remaining, secondaryRemaining);
+  applyMeterEffects(remaining, Number.isFinite(secondaryRemaining) ? secondaryRemaining : remaining);
   const previousPrimaryRaw = lastQuota.quotaStats?.lastCompletedPrimaryUsed;
   const previousPrimaryUsed = previousPrimaryRaw === null || previousPrimaryRaw === undefined ? NaN : Number(previousPrimaryRaw);
   const currentUsageCopy = displayPreferences.primaryShowUsed && Number.isFinite(primaryRemaining)
@@ -1412,7 +1425,7 @@ function render() {
   elements.secondaryPercent.textContent = secondaryParts.join(" · ");
   elements.secondaryReset.textContent = formatResetDetails(lastQuota.secondary, "secondary");
   elements.secondaryBar.style.width = Number.isFinite(secondaryRemaining) ? `${secondaryRemaining}%` : "0%";
-  elements.planText.textContent = String(lastQuota.planType || "--").toUpperCase();
+  elements.planText.textContent = String(lastQuota.planLabel || lastQuota.planType || "--");
   const updatedTime = new Date(lastQuota.fetchedAt || Date.now()).toLocaleTimeString(language === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" });
   elements.statusText.textContent = lastError ? `${t.refreshFailedKeep} · ${updatedTime}` : `${t.updated} · ${updatedTime}`;
   elements.trafficLight.classList.remove("loading");
