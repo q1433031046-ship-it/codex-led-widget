@@ -2,7 +2,7 @@ const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const DEFAULT_TIMEOUT_MS = 12000;
+const DEFAULT_TIMEOUT_MS = 30000;
 const CLIENT_VERSION = "1.1.1";
 
 function findVersionedCodexExecutables(binRoot) {
@@ -218,6 +218,7 @@ function createAppServerSession(options = {}) {
 
 module.exports = {
   CLIENT_VERSION,
+  DEFAULT_TIMEOUT_MS,
   createAppServerSession,
   resolveCodexPath,
   sanitizeAppServerError

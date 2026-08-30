@@ -3,9 +3,12 @@ const { EventEmitter } = require("node:events");
 const { PassThrough } = require("node:stream");
 
 const {
+  DEFAULT_TIMEOUT_MS,
   createAppServerSession,
   sanitizeAppServerError,
 } = require("../src/main/app-server-session");
+
+assert.equal(DEFAULT_TIMEOUT_MS, 30000, "cold App Server startup needs a production-safe timeout");
 
 function createFakeChild(onMessage) {
   const child = new EventEmitter();

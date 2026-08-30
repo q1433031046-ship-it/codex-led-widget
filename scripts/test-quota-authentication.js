@@ -78,6 +78,23 @@ function fakeSession({ loggedIn = false, loginSucceeds = true } = {}) {
   );
   assert.equal(failedLogin.closed, true);
 
+  let sessionAttempts = 0;
+  const recovered = await requestAccountData({
+    createSession: () => {
+      sessionAttempts += 1;
+      if (sessionAttempts === 1) {
+        return {
+          async start() {},
+          async request() { throw new Error("Codex request timed out: account/read"); },
+          close() {}
+        };
+      }
+      return fakeSession({ loggedIn: true });
+    }
+  });
+  assert.ok(recovered.rateLimits);
+  assert.equal(sessionAttempts, 2, "a cold-start account timeout should retry with a fresh session once");
+
   console.log("quota-authentication-tests-passed");
 })().catch((error) => {
   console.error(error);

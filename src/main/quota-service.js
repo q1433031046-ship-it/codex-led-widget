@@ -125,6 +125,20 @@ function normalizeSnapshot(snapshot) {
 }
 
 async function requestAccountData(options = {}) {
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await requestAccountDataAttempt(options);
+    } catch (error) {
+      lastError = error;
+      const mayBeColdStart = /timed out:\s*(?:initialize|account\/read)/i.test(error?.message || "");
+      if (!mayBeColdStart || attempt > 0) throw error;
+    }
+  }
+  throw lastError;
+}
+
+async function requestAccountDataAttempt(options = {}) {
   const session = (options.createSession || createAppServerSession)();
   const onPhase = typeof options.onPhase === "function" ? options.onPhase : () => {};
   const onLoginUrl = typeof options.onLoginUrl === "function" ? options.onLoginUrl : () => {};

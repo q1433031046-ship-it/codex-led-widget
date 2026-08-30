@@ -3,6 +3,7 @@
 ## 1.1.1 - 2026-08-30
 
 - Completed the Codex App Server handshake by sending the required `initialized` notification before account and rate-limit requests.
+- Increased the cold-start allowance and retries the initial account read once with a fresh App Server session when startup exceeds the first timeout.
 - Added forced account refresh plus the official ChatGPT browser-login flow for first-run setup, without persisting credentials or account identifiers.
 - Added a secure initialization window with progress, retry, reopen-login, settings, error, and success states.
 - Added a versioned one-time layout recovery that disables broken legacy magnetic docking, removes unsafe edge coordinates, preserves all user content settings, and places the widget safely on screen.
