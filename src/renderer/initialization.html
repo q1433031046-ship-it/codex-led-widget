@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codex 额度桌面助手 · 初始化</title>
+  <link rel="stylesheet" href="initialization.css">
+</head>
+<body>
+  <main class="setup-shell" aria-labelledby="setupTitle">
+    <header class="titlebar">
+      <div class="brand-mark" aria-hidden="true">C</div>
+      <div class="title-copy">
+        <p class="eyebrow">CODEX QUOTA ASSISTANT</p>
+        <h1 id="setupTitle">首次使用设置</h1>
+      </div>
+      <button id="closeInitializationButton" class="icon-button no-drag" type="button" aria-label="暂时关闭">×</button>
+    </header>
+
+    <section class="status-card" aria-live="polite">
+      <div class="status-orb" aria-hidden="true"><span></span></div>
+      <div class="status-copy">
+        <p class="section-label">当前状态</p>
+        <h2 id="initializationStatus">正在准备初始化…</h2>
+        <p id="statusDetail">窗口和历史数据会保留，只修复不可见布局并连接你的 Codex 账户。</p>
+      </div>
+    </section>
+
+    <section class="steps" aria-label="初始化进度">
+      <article id="layoutStep" class="step pending">
+        <span class="step-index" aria-hidden="true">1</span>
+        <div>
+          <h3>恢复安全布局</h3>
+          <p>清除异常磁吸位置，保留你的界面配置。</p>
+        </div>
+        <span class="step-state">等待</span>
+      </article>
+      <article id="accountStep" class="step pending">
+        <span class="step-index" aria-hidden="true">2</span>
+        <div>
+          <h3>连接 Codex 账户</h3>
+          <p>使用官方登录页，不在本地保存密码或令牌。</p>
+        </div>
+        <span class="step-state">等待</span>
+      </article>
+      <article id="quotaStep" class="step pending">
+        <span class="step-index" aria-hidden="true">3</span>
+        <div>
+          <h3>同步额度</h3>
+          <p>识别 Pro 套餐，并按 5 小时与 7 天窗口归类。</p>
+        </div>
+        <span class="step-state">等待</span>
+      </article>
+    </section>
+
+    <p id="quotaSummary" class="quota-summary" hidden></p>
+    <p id="errorMessage" class="error-message" role="alert" hidden></p>
+
+    <footer class="actions">
+      <div class="primary-actions">
+        <button id="retryButton" class="button primary" type="button" hidden>重新尝试</button>
+        <button id="reopenLoginButton" class="button primary" type="button" hidden>重新打开登录页</button>
+      </div>
+      <button id="openSettingsButton" class="button secondary" type="button">打开设置</button>
+    </footer>
+  </main>
+  <script src="initialization.js"></script>
+</body>
+</html>
