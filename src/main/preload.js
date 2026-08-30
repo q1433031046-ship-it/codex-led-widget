@@ -6,6 +6,13 @@ contextBridge.exposeInMainWorld("codexQuota", {
   close: () => ipcRenderer.invoke("window:close"),
   resizeWindowFromCorner: (value) => ipcRenderer.send("window:resizeFromCorner", value),
   closeStats: () => ipcRenderer.invoke("stats:close"),
+  openStats: () => ipcRenderer.invoke("stats:open"),
+  openSettings: (section) => ipcRenderer.invoke("settings:open", section),
+  closeSettings: () => ipcRenderer.invoke("settings:close"),
+  getSettingsState: () => ipcRenderer.invoke("settings:state:get"),
+  setSettingsPreferences: (value) => ipcRenderer.invoke("settings:preferences:set", value),
+  setQuotaSource: (sourceId) => ipcRenderer.invoke("settings:quotaSource:set", sourceId),
+  copyDiagnostics: () => ipcRenderer.invoke("settings:diagnostics:copy"),
   getAlwaysOnTop: () => ipcRenderer.invoke("window:alwaysOnTop:get"),
   setAlwaysOnTop: (value) => ipcRenderer.invoke("window:alwaysOnTop:set", value),
   getMagnetState: () => ipcRenderer.invoke("window:magnetState:get"),
@@ -41,5 +48,11 @@ contextBridge.exposeInMainWorld("codexQuota", {
   },
   onMagnetStateChanged: (callback) => {
     ipcRenderer.on("window:magnetStateChanged", (_event, value) => callback(value));
+  },
+  onSettingsStateChanged: (callback) => {
+    ipcRenderer.on("settings:stateChanged", (_event, value) => callback(value));
+  },
+  onSettingsNavigate: (callback) => {
+    ipcRenderer.on("settings:navigate", (_event, value) => callback(value));
   }
 });

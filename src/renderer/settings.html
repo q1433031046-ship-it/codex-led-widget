@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Codex 额度桌面助手 · 设置</title>
+    <link rel="stylesheet" href="./settings.css" />
+  </head>
+  <body>
+    <main class="settings-shell">
+      <header class="titlebar">
+        <div>
+          <strong>Codex 额度桌面助手</strong>
+          <span id="titleStatus">设置</span>
+        </div>
+        <div class="title-actions">
+          <span id="saveStatus" class="save-status" aria-live="polite">即时保存</span>
+          <button id="closeSettingsButton" class="icon-button" type="button" aria-label="关闭">×</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <nav class="section-nav" aria-label="设置分类">
+          <button type="button" data-section="quota" data-zh="额度与仪表" data-en="Quota & meter">额度与仪表</button>
+          <button type="button" data-section="window" data-zh="窗口与卡片" data-en="Window & cards">窗口与卡片</button>
+          <button type="button" data-section="stats" data-zh="统计与费用" data-en="Stats & cost">统计与费用</button>
+          <button type="button" data-section="about" data-zh="关于与诊断" data-en="About & diagnostics">关于与诊断</button>
+          <div class="nav-summary">
+            <span id="navPlan">--</span>
+            <strong id="navSource">Codex</strong>
+            <small id="navFreshness">尚未读取</small>
+          </div>
+        </nav>
+
+        <div class="content" role="region" aria-live="polite">
+          <section id="section-quota" class="settings-section" data-settings-panel="quota">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">ACCOUNT RATE LIMITS</span>
+                <h1>额度与仪表</h1>
+              </div>
+              <button id="refreshQuotaButton" type="button" class="secondary-button">刷新额度</button>
+            </div>
+
+            <article class="settings-card source-card">
+              <div class="field-copy">
+                <strong>额度来源</strong>
+                <p>默认使用 Codex。可切换到 Spark 或账号返回的其他额度桶。</p>
+              </div>
+              <select id="quotaSourceSelect" aria-label="额度来源"></select>
+              <div id="sourceAvailability" class="source-availability"></div>
+              <div id="otherWindows" class="other-windows" hidden></div>
+            </article>
+
+            <div class="settings-grid">
+              <label class="settings-card compact">
+                <span class="field-copy"><strong>仪表数据</strong><small>所选周期不可用时会自动回退。</small></span>
+                <select id="meterSourceSelect" data-pref="meterSource">
+                  <option value="primary">5 小时额度</option>
+                  <option value="secondary">7 天额度</option>
+                </select>
+              </label>
+              <label class="settings-card toggle-row">
+                <span class="field-copy"><strong>显示能量仪表</strong><small>在悬浮窗左侧显示剩余额度。</small></span>
+                <input type="checkbox" data-pref="meterEnabled" />
+              </label>
+              <label class="settings-card toggle-row" data-window-control="primary">
+                <span class="field-copy"><strong>5 小时额度卡</strong><small class="availability-reason" data-window="primary"></small></span>
+                <input id="primaryCardToggle" type="checkbox" data-pref="primaryCardEnabled" />
+              </label>
+              <label class="settings-card toggle-row" data-window-control="secondary">
+                <span class="field-copy"><strong>7 天额度卡</strong><small class="availability-reason" data-window="secondary"></small></span>
+                <input id="secondaryCardToggle" type="checkbox" data-pref="secondaryCardEnabled" />
+              </label>
+              <details class="window-detail-group">
+                <summary>5 小时显示细节 <small>当前来源不可用时保留设置</small></summary>
+                <div class="settings-grid nested-grid">
+                  <label class="settings-card toggle-row" data-window-control="primary"><span class="field-copy"><strong>当前数值</strong><small>显示本轮已用或剩余。</small></span><input type="checkbox" data-pref="primaryShowUsed" /></label>
+                  <label class="settings-card compact" data-window-control="primary"><span class="field-copy"><strong>数值类型</strong><small>已用或剩余。</small></span><select data-pref="primaryValueMode"><option value="used">已用</option><option value="remaining">剩余</option></select></label>
+                  <label class="settings-card toggle-row" data-window-control="primary"><span class="field-copy"><strong>上轮未用</strong><small>显示上一轮结束时的余额。</small></span><input type="checkbox" data-pref="primaryShowRemaining" /></label>
+                  <label class="settings-card toggle-row" data-window-control="primary"><span class="field-copy"><strong>重置时刻</strong><small>显示预计重置时间。</small></span><input type="checkbox" data-pref="primaryShowResetTime" /></label>
+                  <label class="settings-card toggle-row" data-window-control="primary"><span class="field-copy"><strong>重置倒计时</strong><small>显示距离重置的时间。</small></span><input type="checkbox" data-pref="primaryShowCountdown" /></label>
+                </div>
+              </details>
+              <details class="window-detail-group" open>
+                <summary>7 天显示细节 <small>当前套餐的主要额度周期</small></summary>
+                <div class="settings-grid nested-grid">
+                  <label class="settings-card toggle-row" data-window-control="secondary"><span class="field-copy"><strong>本周已用</strong><small>显示当前周期消耗。</small></span><input type="checkbox" data-pref="secondaryShowUsed" /></label>
+                  <label class="settings-card toggle-row" data-window-control="secondary"><span class="field-copy"><strong>上周未用</strong><small>显示上一周期结束时的余额。</small></span><input type="checkbox" data-pref="secondaryShowRemaining" /></label>
+                  <label class="settings-card toggle-row" data-window-control="secondary"><span class="field-copy"><strong>重置时刻</strong><small>显示日期与时间。</small></span><input type="checkbox" data-pref="secondaryShowResetTime" /></label>
+                  <label class="settings-card toggle-row" data-window-control="secondary"><span class="field-copy"><strong>重置倒计时</strong><small>显示距离重置的时间。</small></span><input type="checkbox" data-pref="secondaryShowCountdown" /></label>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section id="section-window" class="settings-section" data-settings-panel="window" hidden>
+            <div class="section-heading">
+              <div><span class="eyebrow">WIDGET BEHAVIOR</span><h1>窗口与卡片</h1></div>
+            </div>
+            <div class="settings-grid">
+              <label class="settings-card toggle-row">
+                <span class="field-copy"><strong>悬浮窗置顶</strong><small>保持在其他窗口上方。</small></span>
+                <input id="alwaysOnTopToggle" type="checkbox" data-pref="alwaysOnTop" />
+              </label>
+              <label class="settings-card toggle-row">
+                <span class="field-copy"><strong>贴边磁吸</strong><small>贴边隐藏，悬停时展开。</small></span>
+                <input type="checkbox" data-pref="magneticEnabled" />
+              </label>
+              <label class="settings-card toggle-row">
+                <span class="field-copy"><strong>显示卡片区</strong><small>总开关，不改变各卡片勾选状态。</small></span>
+                <input type="checkbox" data-pref="cardsMasterEnabled" />
+              </label>
+              <label class="settings-card compact">
+                <span class="field-copy"><strong>仪表样式</strong><small>圆球或电池。</small></span>
+                <select data-pref="meterStyle"><option value="circle">圆球</option><option value="battery">电池</option></select>
+              </label>
+              <label class="settings-card compact">
+                <span class="field-copy"><strong>电池方向</strong><small>仅电池样式生效。</small></span>
+                <select data-pref="batteryOrientation"><option value="horizontal">横向</option><option value="vertical">竖向</option></select>
+              </label>
+              <label class="settings-card compact">
+                <span class="field-copy"><strong>仪表位置</strong><small>磁吸时可自动跟随边缘。</small></span>
+                <select data-pref="meterSideMode"><option value="auto">自动</option><option value="left">左侧</option><option value="right">右侧</option></select>
+              </label>
+              <label class="settings-card toggle-row">
+                <span class="field-copy"><strong>颜色随额度变化</strong><small>额度降低时逐步切换为警示色。</small></span>
+                <input type="checkbox" data-pref="adaptiveColorEnabled" />
+              </label>
+              <label class="settings-card compact">
+                <span class="field-copy"><strong>颜色联动</strong><small>统一颜色或各模块独立。</small></span>
+                <select data-pref="colorMode"><option value="unified">统一</option><option value="independent">独立</option></select>
+              </label>
+            </div>
+            <article class="settings-card reset-card">
+              <span class="field-copy"><strong>恢复布局尺寸</strong><small>只重置尺寸，不改变显示项目。</small></span>
+              <div class="button-row">
+                <button id="resetCardSizingButton" type="button" class="secondary-button">卡片高度</button>
+                <button id="resetColumnSizingButton" type="button" class="secondary-button">左右布局</button>
+                <button id="resetMeterSizingButton" type="button" class="secondary-button">仪表尺寸</button>
+              </div>
+            </article>
+          </section>
+
+          <section id="section-stats" class="settings-section" data-settings-panel="stats" hidden>
+            <div class="section-heading">
+              <div><span class="eyebrow">HISTORY & COST</span><h1>统计与费用</h1></div>
+              <button id="openStatsButton" type="button" class="secondary-button">打开统计页</button>
+            </div>
+            <div class="settings-grid">
+              <label class="settings-card toggle-row"><span class="field-copy"><strong>消耗统计卡</strong><small>在悬浮窗显示累计消耗。</small></span><input type="checkbox" data-pref="quotaStatsPanelEnabled" /></label>
+              <label class="settings-card toggle-row" data-window-control="primary"><span class="field-copy"><strong>5 小时消耗图</strong><small class="availability-reason" data-window="primary"></small></span><input type="checkbox" data-pref="primaryChartEnabled" /></label>
+              <label class="settings-card toggle-row" data-window-control="secondary"><span class="field-copy"><strong>7 天消耗图</strong><small class="availability-reason" data-window="secondary"></small></span><input type="checkbox" data-pref="secondaryChartEnabled" /></label>
+              <label class="settings-card toggle-row"><span class="field-copy"><strong>消耗日历</strong><small>在统计页显示日历热力图。</small></span><input type="checkbox" data-pref="calendarEnabled" /></label>
+              <label class="settings-card toggle-row"><span class="field-copy"><strong>Token 费用卡</strong><small>显示本机可归属的 Token 统计。</small></span><input type="checkbox" data-pref="tokenPanelEnabled" /></label>
+              <label class="settings-card toggle-row"><span class="field-copy"><strong>今日 Token</strong><small>显示今天的本地统计。</small></span><input type="checkbox" data-pref="tokenShowToday" /></label>
+              <label class="settings-card toggle-row"><span class="field-copy"><strong>本周 Token</strong><small>显示本周累计。</small></span><input type="checkbox" data-pref="tokenShowWeek" /></label>
+              <label class="settings-card toggle-row"><span class="field-copy"><strong>累计 Token</strong><small>显示追踪以来累计。</small></span><input type="checkbox" data-pref="tokenShowLifetime" /></label>
+              <label class="settings-card toggle-row"><span class="field-copy"><strong>美元估算</strong><small>按官方 API 单价进行等值估算。</small></span><input type="checkbox" data-pref="tokenShowUsd" /></label>
+              <label class="settings-card toggle-row"><span class="field-copy"><strong>人民币估算</strong><small>使用缓存汇率换算。</small></span><input type="checkbox" data-pref="tokenShowCny" /></label>
+              <label class="settings-card compact"><span class="field-copy"><strong>日历计量单位</strong><small>额度、Token 或费用。</small></span><select data-pref="calendarUnit"><option value="quota">额度 %</option><option value="tokens">Token</option><option value="usd">美元</option><option value="cny">人民币</option></select></label>
+              <label class="settings-card compact"><span class="field-copy"><strong>日历范围</strong><small>月视图或年视图。</small></span><select data-pref="calendarRange"><option value="month">月</option><option value="year">年</option></select></label>
+            </div>
+          </section>
+
+          <section id="section-about" class="settings-section" data-settings-panel="about" hidden>
+            <div class="section-heading"><div><span class="eyebrow">LOCAL DIAGNOSTICS</span><h1>关于与诊断</h1></div></div>
+            <article class="about-card">
+              <div><span>应用版本</span><strong id="appVersion">--</strong></div>
+              <div><span>套餐识别</span><strong id="aboutPlan">--</strong></div>
+              <div><span>当前来源</span><strong id="aboutSource">--</strong></div>
+              <div><span>最后刷新</span><strong id="aboutRefresh">--</strong></div>
+            </article>
+            <article class="settings-card diagnostics-card">
+              <div class="field-copy">
+                <strong>复制脱敏诊断</strong>
+                <p>仅包含应用版本、来源、窗口分钟数和刷新状态；不会包含登录令牌、账号 ID 或本机路径。</p>
+              </div>
+              <button id="copyDiagnosticsButton" type="button" class="primary-button">复制诊断信息</button>
+            </article>
+          </section>
+        </div>
+      </div>
+    </main>
+    <script>
+      if (!window.codexQuota && new URLSearchParams(location.search).has("preview")) {
+        const previewListeners = { state: [], navigate: [], language: [] };
+        const previewNow = new Date().toISOString();
+        let previewState = {
+          app: { name: "Codex 额度桌面助手", version: "1.1.0-preview" },
+          preferences: {
+            preferenceVersion: 3, quotaSourceId: "codex", alwaysOnTop: true,
+            primaryCardEnabled: true, secondaryCardEnabled: true, cardsMasterEnabled: true,
+            meterEnabled: true, meterSource: "primary", meterStyle: "circle",
+            batteryOrientation: "horizontal", magneticEnabled: false, meterSideMode: "auto",
+            adaptiveColorEnabled: true, colorMode: "unified", primaryChartEnabled: false,
+            secondaryChartEnabled: false, primaryShowUsed: true, primaryValueMode: "used",
+            primaryShowRemaining: true, primaryShowResetTime: true, primaryShowCountdown: false,
+            secondaryShowUsed: true, secondaryShowRemaining: true, secondaryShowResetTime: false,
+            secondaryShowCountdown: true, quotaStatsPanelEnabled: false, calendarEnabled: true,
+            calendarUnit: "quota", calendarRange: "month", tokenPanelEnabled: true,
+            tokenShowToday: true, tokenShowWeek: true, tokenShowLifetime: true,
+            tokenShowUsd: false, tokenShowCny: false
+          },
+          quota: {
+            activeSourceId: "codex", planType: "prolite", planLabel: "Pro", fetchedAt: previewNow, stale: false,
+            sources: [
+              { id: "codex", label: "Codex", planType: "prolite", planLabel: "Pro", hasShortTerm: false, hasWeekly: true, shortTerm: null, weekly: { usedPercent: 8, remainingPercent: 92, windowDurationMins: 10080, resetsAt: previewNow }, otherWindows: [] },
+              { id: "codex_bengalfox", label: "GPT-5.3-Codex-Spark", planType: "prolite", planLabel: "Pro", hasShortTerm: true, hasWeekly: true, shortTerm: { usedPercent: 20, remainingPercent: 80, windowDurationMins: 300, resetsAt: previewNow }, weekly: { usedPercent: 30, remainingPercent: 70, windowDurationMins: 10080, resetsAt: previewNow }, otherWindows: [] }
+            ]
+          },
+          refresh: { stale: false, lastError: null, fetchedAt: previewNow }
+        };
+        const publishPreviewState = () => previewListeners.state.forEach((callback) => callback(structuredClone(previewState)));
+        window.codexQuota = {
+          getSettingsState: async () => structuredClone(previewState),
+          setSettingsPreferences: async (changes) => {
+            previewState.preferences = { ...previewState.preferences, ...changes };
+            publishPreviewState();
+            return structuredClone(previewState);
+          },
+          setQuotaSource: async (sourceId) => {
+            previewState.preferences.quotaSourceId = sourceId;
+            previewState.quota.activeSourceId = sourceId;
+            publishPreviewState();
+            return structuredClone(previewState);
+          },
+          getQuota: async () => structuredClone(previewState.quota),
+          setCardSizing: async (value) => value,
+          setColumnSizing: async (value) => value,
+          setMeterSizing: async (value) => value,
+          copyDiagnostics: async () => ({ copied: true }),
+          openStats: async () => {}, closeSettings: async () => {},
+          onSettingsStateChanged: (callback) => previewListeners.state.push(callback),
+          onSettingsNavigate: (callback) => previewListeners.navigate.push(callback),
+          onToggleLanguage: (callback) => previewListeners.language.push(callback)
+        };
+      }
+    </script>
+    <script src="./settings.js"></script>
+  </body>
+</html>

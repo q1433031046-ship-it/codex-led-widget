@@ -52,7 +52,8 @@ const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main", "ma
 const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "renderer", "renderer.js"), "utf8");
 const preloadSource = fs.readFileSync(path.join(__dirname, "..", "src", "main", "preload.js"), "utf8");
 const stylesSource = fs.readFileSync(path.join(__dirname, "..", "src", "renderer", "styles.css"), "utf8");
-assert.match(mainSource, /贴边磁吸 · 悬停展开/);
+const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src", "renderer", "settings.html"), "utf8");
+assert.match(settingsSource, /贴边磁吸/);
 assert.match(mainSource, /MAGNET_RETRACT_DELAY = 0/);
 assert.match(mainSource, /MAGNET_RETRACT_DELAY <= 0/);
 assert.match(mainSource, /magnetState\.expandedBounds/);
@@ -60,7 +61,7 @@ assert.match(mainSource, /requestSingleInstanceLock/);
 assert.match(mainSource, /app\.on\("second-instance"/);
 assert.match(mainSource, /geometryChanged/);
 assert.match(mainSource, /currentBounds\.x === nextBounds\.x/);
-assert.match(mainSource, /仪表左右位置/);
+assert.match(settingsSource, /仪表位置/);
 assert.match(mainSource, /resolveMeterSide/);
 assert.match(rendererSource, /magnetMeterOnly/);
 assert.match(rendererSource, /meterSide/);

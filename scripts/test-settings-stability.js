@@ -11,6 +11,7 @@ const statsCss = fs.readFileSync(path.join(root, "src", "renderer", "stats.css")
 const renderer = fs.readFileSync(path.join(root, "src", "renderer", "renderer.js"), "utf8");
 const widgetCss = fs.readFileSync(path.join(root, "src", "renderer", "styles.css"), "utf8");
 const quotaDisplay = fs.readFileSync(path.join(root, "src", "renderer", "quota-display.js"), "utf8");
+const settingsHtml = fs.readFileSync(path.join(root, "src", "renderer", "settings.html"), "utf8");
 
 assert.match(main, /preferenceVersion:\s*3/);
 assert.match(main, /quotaSourceId:\s*"codex"/);
@@ -26,7 +27,7 @@ assert.match(calendarHandler, /notifyMain:\s*false/);
 assert.match(calendarHandler, /rebuildMenu:\s*false/);
 assert.match(stats, /Math\.abs\(delta\)\s*>\s*8/);
 assert.match(statsCss, /\.scroll-area input\s*\{\s*-webkit-app-region:\s*no-drag/);
-assert.match(main, /一键显示已勾选卡片/);
+assert.match(settingsHtml, /显示卡片区/);
 assert.match(main, /cardsMasterEnabled/);
 assert.match(renderer, /cardsVisible/);
 assert.match(renderer, /panellessMeterMinimums/);

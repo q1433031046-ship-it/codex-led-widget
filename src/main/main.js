@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, screen, net } = require("electron");
+const { app, BrowserWindow, clipboard, dialog, ipcMain, shell, Tray, Menu, screen, net } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const { getQuota, mergeTokenUsageSnapshot } = require("./quota-service");
@@ -39,6 +39,7 @@ if (!hasSingleInstanceLock) app.quit();
 
 let mainWindow;
 let statsWindow;
+let settingsWindow;
 let tray;
 let trayMenu;
 let isAlwaysOnTop = true;
@@ -67,6 +68,8 @@ let magnetMenuOpen = false;
 const magnetOpenMenus = new Set();
 let magnetProgrammaticMove = false;
 let magnetGeometry = { sideVisible: 7, keepMeter: false };
+let isQuitting = false;
+let lastQuotaError = null;
 let magnetState = {
   edge: null,
   displayId: null,
@@ -79,6 +82,8 @@ const DEFAULT_WINDOW_SIZE = { width: 277, height: 95 };
 const MIN_WINDOW_SIZE = { width: 50, height: 50 };
 const DEFAULT_STATS_WINDOW_SIZE = { width: 560, height: 520 };
 const MIN_STATS_WINDOW_SIZE = { width: 320, height: 260 };
+const DEFAULT_SETTINGS_WINDOW_SIZE = { width: 820, height: 640 };
+const MIN_SETTINGS_WINDOW_SIZE = { width: 640, height: 480 };
 const MAX_STORED_METER_SIZE = 4096;
 const MIN_METER_SIZE = 19.2;
 const MAGNET_SNAP_DISTANCE = 30;
@@ -588,7 +593,13 @@ function loadQuotaSnapshot() {
   try {
     const saved = JSON.parse(fs.readFileSync(quotaSnapshotPath(), "utf8"));
     const fetchedAt = new Date(saved?.fetchedAt).getTime();
-    if (!Number.isFinite(fetchedAt) || (!saved?.primary && !saved?.secondary)) return null;
+    const hasQuotaWindow = Boolean(
+      saved?.primary ||
+      saved?.secondary ||
+      saved?.otherWindows?.length ||
+      saved?.sources?.some((source) => source?.primary || source?.secondary || source?.otherWindows?.length)
+    );
+    if (!Number.isFinite(fetchedAt) || !hasQuotaWindow) return null;
     let normalizedSaved = saved;
     const savedWindows = [saved.primary, saved.secondary].filter(Boolean);
     const canReclassify = !Array.isArray(saved.sources) && savedWindows.length > 0 &&
@@ -720,6 +731,7 @@ function setDisplayPreferences(changes, options = {}) {
   }
   if (options.notifyMain !== false) mainWindow?.webContents.send("ui:displayPreferencesChanged", displayPreferences);
   if (options.notifyStats !== false) statsWindow?.webContents.send("ui:displayPreferencesChanged", displayPreferences);
+  notifySettingsStateChanged();
   if (Object.hasOwn(changes, "meterSideMode")) {
     magnetState.meterSide = resolveMeterSide(magnetState.edge, magnetState.meterSide);
     notifyMagnetState();
@@ -994,6 +1006,7 @@ function notifyQuotaUpdated(payload) {
   for (const target of [mainWindow, statsWindow]) {
     if (target && !target.isDestroyed()) target.webContents.send("quota:updated", payload);
   }
+  notifySettingsStateChanged();
 }
 
 function notifyQuotaRefreshFailed(error) {
@@ -1001,9 +1014,15 @@ function notifyQuotaRefreshFailed(error) {
   for (const target of [mainWindow, statsWindow]) {
     if (target && !target.isDestroyed()) target.webContents.send("quota:refreshFailed", message);
   }
+  notifySettingsStateChanged();
 }
 
 function updateQuotaFailureState(error) {
+  lastQuotaError = sanitizeDiagnosticMessage(error instanceof Error ? error.message : error);
+  if (lastQuotaPayload) {
+    lastQuotaPayload = { ...lastQuotaPayload, stale: true };
+    saveQuotaSnapshot(lastQuotaPayload);
+  }
   if (lastTrayQuota) {
     const remaining = lastTrayQuota.primary?.remainingPercent ?? lastTrayQuota.remainingPercent ?? "--";
     tray?.setToolTip(`${PRODUCT_NAME} · 暂时刷新失败 · 保留 ${remaining}%`);
@@ -1033,7 +1052,8 @@ async function refreshQuotaSnapshot() {
       const tokenUsage = mergeTokenUsageSnapshot(quota.tokenUsage, lastQuotaPayload?.tokenUsage, {
         previousFetchedAt: lastQuotaPayload?.fetchedAt
       });
-      lastQuotaPayload = applyTrackedTokenFallback({ ...quota, tokenUsage, exchangeRate });
+      lastQuotaError = null;
+      lastQuotaPayload = applyTrackedTokenFallback({ ...quota, tokenUsage, exchangeRate, stale: false });
       if (modelUsageSnapshot && modelPriceService) {
         lastQuotaPayload.modelUsage = enrichModelUsage(modelUsageSnapshot, modelPriceService.snapshot());
       }
@@ -1439,6 +1459,222 @@ function showStatsWindow() {
   else revealStatsWindow();
 }
 
+function normalizeSettingsSection(value) {
+  return ["quota", "window", "stats", "about"].includes(value) ? value : "quota";
+}
+
+function publicQuotaWindow(quotaWindow) {
+  if (!quotaWindow || typeof quotaWindow !== "object") return null;
+  return {
+    usedPercent: quotaWindow.usedPercent ?? null,
+    remainingPercent: quotaWindow.remainingPercent ?? null,
+    windowDurationMins: Number(quotaWindow.windowDurationMins) || null,
+    resetsAt: quotaWindow.resetsAt || null
+  };
+}
+
+function publicQuotaSource(source) {
+  if (!source || typeof source !== "object") return null;
+  const shortTerm = publicQuotaWindow(source.shortTerm || source.primary);
+  const weekly = publicQuotaWindow(source.weekly || source.secondary);
+  return {
+    id: normalizeQuotaSourceId(source.id || source.limitId) || "codex",
+    label: String(source.label || source.limitName || source.id || "Codex").slice(0, 120),
+    planType: String(source.planType || "unknown").slice(0, 80),
+    planLabel: String(source.planLabel || displayPlanType(source.planType)).slice(0, 80),
+    shortTerm,
+    weekly,
+    hasShortTerm: Boolean(shortTerm),
+    hasWeekly: Boolean(weekly),
+    otherWindows: (Array.isArray(source.otherWindows) ? source.otherWindows : [])
+      .map(publicQuotaWindow)
+      .filter(Boolean)
+  };
+}
+
+function settingsStatePayload() {
+  const fallbackSource = lastQuotaPayload ? publicQuotaSource(lastQuotaPayload) : null;
+  const sources = (Array.isArray(lastQuotaPayload?.sources) ? lastQuotaPayload.sources : [fallbackSource])
+    .map(publicQuotaSource)
+    .filter(Boolean);
+  return {
+    app: {
+      name: PRODUCT_NAME,
+      version: typeof app.getVersion === "function" ? app.getVersion() : "1.0.0"
+    },
+    preferences: JSON.parse(JSON.stringify(displayPreferences)),
+    quota: lastQuotaPayload ? {
+      activeSourceId: normalizeQuotaSourceId(lastQuotaPayload.activeSourceId || lastQuotaPayload.limitId) || "codex",
+      planType: String(lastQuotaPayload.planType || "unknown").slice(0, 80),
+      planLabel: String(lastQuotaPayload.planLabel || displayPlanType(lastQuotaPayload.planType)).slice(0, 80),
+      fetchedAt: lastQuotaPayload.fetchedAt || null,
+      stale: Boolean(lastQuotaPayload.stale),
+      sources
+    } : null,
+    refresh: {
+      stale: Boolean(lastQuotaPayload?.stale),
+      lastError: lastQuotaError,
+      fetchedAt: lastQuotaPayload?.fetchedAt || null
+    }
+  };
+}
+
+function sanitizeDiagnosticMessage(value) {
+  return String(value || "")
+    .replace(/[A-Za-z]:\\[^\r\n"']+/g, "<local-path>")
+    .replace(/((?:bearer|token|authorization)\s*[:=]\s*)[^\s,;]+/gi, "$1<redacted>")
+    .slice(0, 500);
+}
+
+function sanitizedDiagnosticsPayload() {
+  const state = settingsStatePayload();
+  return {
+    appVersion: state.app.version,
+    preferenceSchema: displayPreferences.preferenceVersion,
+    activeSourceId: state.quota?.activeSourceId || displayPreferences.quotaSourceId,
+    planType: state.quota?.planType || null,
+    planLabel: state.quota?.planLabel || null,
+    sources: (state.quota?.sources || []).map((source) => ({
+      id: source.id,
+      label: source.label,
+      windows: [source.shortTerm, source.weekly, ...source.otherWindows]
+        .filter(Boolean)
+        .map((window) => ({
+          windowDurationMins: window.windowDurationMins,
+          usedPercent: window.usedPercent,
+          resetsAt: window.resetsAt
+        }))
+    })),
+    fetchedAt: state.refresh.fetchedAt,
+    stale: state.refresh.stale,
+    lastError: state.refresh.lastError ? sanitizeDiagnosticMessage(state.refresh.lastError) : null,
+    generatedAt: new Date().toISOString()
+  };
+}
+
+function notifySettingsStateChanged() {
+  if (settingsWindow && !settingsWindow.isDestroyed() && !settingsWindow.webContents.isDestroyed()) {
+    settingsWindow.webContents.send("settings:stateChanged", settingsStatePayload());
+  }
+}
+
+function createSettingsWindow(initialSection = "quota") {
+  if (settingsWindow && !settingsWindow.isDestroyed()) return settingsWindow;
+  settingsWindow = new BrowserWindow({
+    width: DEFAULT_SETTINGS_WINDOW_SIZE.width,
+    height: DEFAULT_SETTINGS_WINDOW_SIZE.height,
+    minWidth: MIN_SETTINGS_WINDOW_SIZE.width,
+    minHeight: MIN_SETTINGS_WINDOW_SIZE.height,
+    frame: false,
+    resizable: true,
+    show: false,
+    backgroundColor: "#0d141d",
+    title: `${PRODUCT_NAME} · 设置`,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  settingsWindow.loadFile(path.join(__dirname, "../renderer/settings.html"), {
+    query: { section: normalizeSettingsSection(initialSection) }
+  });
+  settingsWindow.on("close", (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    settingsWindow.hide();
+  });
+  settingsWindow.on("closed", () => {
+    settingsWindow = null;
+  });
+  return settingsWindow;
+}
+
+function showSettingsWindow(section = "quota") {
+  const normalizedSection = normalizeSettingsSection(section);
+  const target = createSettingsWindow(normalizedSection);
+  const reveal = () => {
+    if (!target || target.isDestroyed()) return;
+    target.show();
+    target.focus();
+    target.webContents.send("settings:navigate", normalizedSection);
+    target.webContents.send("settings:stateChanged", settingsStatePayload());
+  };
+  if (target.webContents.isLoading()) target.once("ready-to-show", reveal);
+  else reveal();
+}
+
+function sanitizedSettingsChanges(value) {
+  const input = value && typeof value === "object" ? value : {};
+  const changes = {};
+  const booleanKeys = [
+    "alwaysOnTop", "primaryCardEnabled", "secondaryCardEnabled", "cardsMasterEnabled",
+    "meterEnabled", "magneticEnabled", "adaptiveColorEnabled", "primaryChartEnabled",
+    "secondaryChartEnabled", "primaryShowUsed", "primaryShowRemaining",
+    "secondaryShowUsed", "secondaryShowRemaining", "primaryShowResetTime",
+    "primaryShowCountdown", "secondaryShowResetTime", "secondaryShowCountdown",
+    "tokenPanelEnabled", "tokenShowToday", "tokenShowWeek", "tokenShowLifetime",
+    "tokenShowUsd", "tokenShowCny", "calendarEnabled", "quotaStatsPanelEnabled"
+  ];
+  for (const key of booleanKeys) {
+    if (typeof input[key] === "boolean") changes[key] = input[key];
+  }
+  const enums = {
+    meterSource: ["primary", "secondary"],
+    meterStyle: ["circle", "battery"],
+    batteryOrientation: ["horizontal", "vertical"],
+    meterSideMode: ["auto", "left", "right"],
+    colorMode: ["unified", "independent"],
+    primaryValueMode: ["used", "remaining"],
+    calendarUnit: ["quota", "tokens", "usd", "cny"],
+    calendarRange: ["month", "year"],
+    calendarMonthStyle: ["single", "multi"],
+    calendarYearStyle: ["months", "days"]
+  };
+  for (const [key, allowed] of Object.entries(enums)) {
+    if (allowed.includes(input[key])) changes[key] = input[key];
+  }
+  return changes;
+}
+
+async function setSettingsPreferences(value) {
+  const changes = sanitizedSettingsChanges(value);
+  const alwaysOnTopChange = Object.hasOwn(changes, "alwaysOnTop") ? changes.alwaysOnTop : null;
+  const magneticChange = Object.hasOwn(changes, "magneticEnabled") ? changes.magneticEnabled : null;
+  delete changes.alwaysOnTop;
+  delete changes.magneticEnabled;
+  if (Object.keys(changes).length) setDisplayPreferences(changes);
+  if (alwaysOnTopChange !== null) setAlwaysOnTop(alwaysOnTopChange);
+  if (magneticChange !== null) setMagneticEnabled(magneticChange);
+  notifySettingsStateChanged();
+  return settingsStatePayload();
+}
+
+async function setQuotaSourceFromSettings(value) {
+  const sourceId = normalizeQuotaSourceId(value);
+  const sources = Array.isArray(lastQuotaPayload?.sources) ? lastQuotaPayload.sources : [];
+  if (!sourceId || (sources.length && !sources.some((source) => source.id === sourceId))) {
+    throw new Error("选择的额度来源当前不可用。");
+  }
+  if (sourceId === displayPreferences.quotaSourceId) return settingsStatePayload();
+  const previousSourceId = displayPreferences.quotaSourceId;
+  try {
+    if (quotaRefreshPromise) {
+      try {
+        await quotaRefreshPromise;
+      } catch {
+        // The source switch below performs its own fresh read.
+      }
+    }
+    setDisplayPreferences({ quotaSourceId: sourceId });
+    await refreshQuotaSnapshot();
+    return settingsStatePayload();
+  } catch (error) {
+    setDisplayPreferences({ quotaSourceId: previousSourceId });
+    throw error;
+  }
+}
+
 function placeWindowBottomRight() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const display = screen.getPrimaryDisplay();
@@ -1474,51 +1710,6 @@ async function createTray() {
   tray.on("click", toggleWindow);
 }
 
-function findTraySubmenu(menuPath) {
-  let currentMenu = trayMenu;
-  for (const selector of menuPath) {
-    const item = currentMenu?.items?.find((candidate) => candidate.id === selector || candidate.label === selector);
-    if (!item?.submenu) return null;
-    currentMenu = item.submenu;
-  }
-  return currentMenu;
-}
-
-function stickyToggleClick(menuPath, action) {
-  return (menuItem, browserWindow, event) => {
-    const clickPoint = screen.getCursorScreenPoint();
-    const itemSelector = menuItem.id || menuItem.label;
-    action(menuItem, browserWindow, event);
-    setTimeout(() => {
-      const currentPoint = screen.getCursorScreenPoint();
-      if (Math.hypot(currentPoint.x - clickPoint.x, currentPoint.y - clickPoint.y) > 56) return;
-      const submenu = findTraySubmenu(menuPath);
-      if (!submenu) return;
-      const itemIndex = Math.max(0, submenu.items.findIndex((item) => item.id === itemSelector || item.label === itemSelector));
-      const popupOptions = {
-        x: Math.round(clickPoint.x - 110),
-        y: Math.round(clickPoint.y - itemIndex * 24 - 12),
-        sourceType: "mouse"
-      };
-      if (browserWindow && !browserWindow.isDestroyed?.()) popupOptions.window = browserWindow;
-      submenu.popup(popupOptions);
-    }, 90);
-  };
-}
-
-function keepToggleSubmenusOpen(items, menuPath = []) {
-  return items.map((item) => {
-    if (Array.isArray(item.submenu)) {
-      const selector = item.id || item.label;
-      return { ...item, submenu: keepToggleSubmenusOpen(item.submenu, [...menuPath, selector]) };
-    }
-    if (["checkbox", "radio"].includes(item.type) && typeof item.click === "function") {
-      return { ...item, click: stickyToggleClick(menuPath, item.click) };
-    }
-    return item;
-  });
-}
-
 function bindMagnetMenuHold(menu) {
   if (!menu) return;
   menu.on("menu-will-show", () => {
@@ -1533,196 +1724,46 @@ function bindMagnetMenuHold(menu) {
       if (!magnetMenuOpen) scheduleMagnetRetract();
     }, 110);
   });
-  for (const item of menu.items || []) bindMagnetMenuHold(item.submenu);
+}
+
+function buildQuickMenuTemplate() {
+  const sourceLabel = lastTrayQuota?.limitName || lastTrayQuota?.activeSourceId || displayPreferences.quotaSourceId || "codex";
+  const quotaItems = [
+    { label: `额度来源 · ${sourceLabel}`, enabled: false },
+    ...(lastTrayQuota?.primary
+      ? [{ label: `5小时额度 · 剩余 ${lastTrayQuota.primary.remainingPercent ?? "--"}%`, enabled: false }]
+      : []),
+    ...(lastTrayQuota?.secondary
+      ? [{ label: `7天额度 · 剩余 ${lastTrayQuota.secondary.remainingPercent ?? "--"}%`, enabled: false }]
+      : []),
+    ...(!lastTrayQuota ? [{ label: "额度尚未读取", enabled: false }] : [])
+  ];
+
+  return [
+    ...quotaItems,
+    { type: "separator" },
+    { label: mainWindow?.isVisible?.() ? "隐藏悬浮窗" : "显示悬浮窗", click: toggleWindow },
+    { label: "刷新额度", click: () => refreshQuotaSnapshot().catch(() => {}) },
+    { label: "悬浮窗置顶", type: "checkbox", checked: isAlwaysOnTop, click: (item) => setAlwaysOnTop(item.checked) },
+    { label: "打开额度统计", click: showStatsWindow },
+    { label: `额度来源设置 · ${sourceLabel}`, click: () => showSettingsWindow("quota") },
+    { label: "打开设置", click: () => showSettingsWindow("quota") },
+    { label: "切换语言 / Language", click: () => {
+      mainWindow?.webContents.send("ui:toggleLanguage");
+      statsWindow?.webContents.send("ui:toggleLanguage");
+      settingsWindow?.webContents.send("ui:toggleLanguage");
+    } },
+    { type: "separator" },
+    { label: "退出", click: () => app.quit() }
+  ];
 }
 
 function rebuildTrayMenu() {
   if (!tray) return;
-  const quotaItems = lastTrayQuota
-    ? [
-        { label: `5小时额度 · 当前剩余 ${lastTrayQuota.primary?.remainingPercent ?? "--"}%`, enabled: false },
-        { label: `7天总额度 · 当前剩余 ${lastTrayQuota.secondary?.remainingPercent ?? "--"}%`, enabled: false },
-        { type: "separator" }
-      ]
-    : [];
-  const menuTemplate = [
-      ...quotaItems,
-      {
-        label: "窗口与布局",
-        submenu: [
-          { label: "显示/隐藏悬浮窗", click: toggleWindow },
-          { label: "悬浮窗置顶", type: "checkbox", checked: isAlwaysOnTop, click: (item) => setAlwaysOnTop(item.checked) },
-          { label: "贴边磁吸 · 悬停展开", type: "checkbox", checked: displayPreferences.magneticEnabled, click: (item) => setMagneticEnabled(item.checked) },
-          {
-            label: "仪表左右位置",
-            submenu: [
-              { label: "自动跟随吸附边", type: "radio", checked: displayPreferences.meterSideMode === "auto", click: () => setDisplayPreference("meterSideMode", "auto") },
-              { label: "仪表在左", type: "radio", checked: displayPreferences.meterSideMode === "left", click: () => setDisplayPreference("meterSideMode", "left") },
-              { label: "仪表在右", type: "radio", checked: displayPreferences.meterSideMode === "right", click: () => setDisplayPreference("meterSideMode", "right") }
-            ]
-          },
-          {
-            label: "悬浮窗卡片",
-            submenu: [
-              { label: "一键显示已勾选卡片", type: "checkbox", checked: displayPreferences.cardsMasterEnabled, click: (item) => setDisplayPreference("cardsMasterEnabled", item.checked) },
-              { type: "separator" },
-              { label: "短期额度卡 · 5小时", type: "checkbox", checked: displayPreferences.primaryCardEnabled, click: (item) => setDisplayPreference("primaryCardEnabled", item.checked) },
-              { label: "总额度卡 · 7天", type: "checkbox", checked: displayPreferences.secondaryCardEnabled, click: (item) => setDisplayPreference("secondaryCardEnabled", item.checked) },
-              { label: "消耗统计卡", type: "checkbox", checked: displayPreferences.quotaStatsPanelEnabled, click: (item) => setDisplayPreference("quotaStatsPanelEnabled", item.checked) },
-              { label: "Token 费用卡", type: "checkbox", checked: displayPreferences.tokenPanelEnabled, click: (item) => setDisplayPreference("tokenPanelEnabled", item.checked) }
-            ]
-          },
-          { type: "separator" },
-          { label: "重置卡片高度", click: () => setCardSizing({ primary: 1, secondary: 1, stats: 1, token: 1 }) },
-          { label: "重置左右布局", click: () => setColumnSizing({ meterRatio: 0.34 }) },
-          { label: "重置仪表尺寸", click: () => setMeterSizing(defaultDisplayPreferences().meterSizing) }
-        ]
-      },
-      {
-        label: "当前额度",
-        submenu: [
-          {
-            label: "颜色",
-            submenu: [
-              { label: "颜色随额度变化", type: "checkbox", checked: displayPreferences.adaptiveColorEnabled, click: (item) => setDisplayPreference("adaptiveColorEnabled", item.checked) },
-              {
-                label: "颜色联动方式",
-                enabled: displayPreferences.adaptiveColorEnabled,
-                submenu: [
-                  { label: "统一颜色 · 按5小时额度", type: "radio", checked: displayPreferences.colorMode === "unified", click: () => setDisplayPreference("colorMode", "unified") },
-                  { label: "各模块独立颜色", type: "radio", checked: displayPreferences.colorMode === "independent", click: () => setDisplayPreference("colorMode", "independent") }
-                ]
-              }
-            ]
-          },
-          {
-            label: "能量仪表",
-            submenu: [
-              { label: "显示能量仪表", type: "checkbox", checked: displayPreferences.meterEnabled, click: (item) => setDisplayPreference("meterEnabled", item.checked) },
-              {
-                label: "仪表皮肤",
-                submenu: [
-                  { label: "圆球", type: "radio", checked: displayPreferences.meterStyle === "circle", click: () => setDisplayPreference("meterStyle", "circle") },
-                  { label: "电池", type: "radio", checked: displayPreferences.meterStyle === "battery", click: () => setDisplayPreference("meterStyle", "battery") }
-                ]
-              },
-              {
-                label: "电池方向",
-                enabled: displayPreferences.meterStyle === "battery",
-                submenu: [
-                  { label: "横向", type: "radio", checked: displayPreferences.batteryOrientation === "horizontal", click: () => setDisplayPreference("batteryOrientation", "horizontal") },
-                  { label: "竖向", type: "radio", checked: displayPreferences.batteryOrientation === "vertical", click: () => setDisplayPreference("batteryOrientation", "vertical") }
-                ]
-              },
-              {
-                label: "仪表数据来源",
-                submenu: [
-                  { label: "5小时额度", type: "radio", checked: displayPreferences.meterSource === "primary", click: () => setDisplayPreference("meterSource", "primary") },
-                  { label: "7天总额度", type: "radio", checked: displayPreferences.meterSource === "secondary", click: () => setDisplayPreference("meterSource", "secondary") }
-                ]
-              }
-            ]
-          },
-          {
-            label: "短期额度卡 · 5小时",
-            submenu: [
-              { label: "显示当前数值", type: "checkbox", checked: displayPreferences.primaryShowUsed, click: (item) => setDisplayPreference("primaryShowUsed", item.checked) },
-              {
-                label: "当前数值类型",
-                enabled: displayPreferences.primaryShowUsed,
-                submenu: [
-                  { label: "已用", type: "radio", checked: displayPreferences.primaryValueMode === "used", click: () => setDisplayPreference("primaryValueMode", "used") },
-                  { label: "剩余", type: "radio", checked: displayPreferences.primaryValueMode === "remaining", click: () => setDisplayPreference("primaryValueMode", "remaining") }
-                ]
-              },
-              { label: "显示上轮未用", type: "checkbox", checked: displayPreferences.primaryShowRemaining, click: (item) => setDisplayPreference("primaryShowRemaining", item.checked) },
-              { type: "separator" },
-              { label: "显示重置时刻", type: "checkbox", checked: displayPreferences.primaryShowResetTime, click: (item) => setDisplayPreference("primaryShowResetTime", item.checked) },
-              { label: "显示重置倒计时", type: "checkbox", checked: displayPreferences.primaryShowCountdown, click: (item) => setDisplayPreference("primaryShowCountdown", item.checked) },
-              { label: "显示消耗图", type: "checkbox", checked: displayPreferences.primaryChartEnabled, click: (item) => setChartEnabled("primary", item.checked) }
-            ]
-          },
-          {
-            label: "总额度卡 · 7天",
-            submenu: [
-              { label: "显示本周已用", type: "checkbox", checked: displayPreferences.secondaryShowUsed, click: (item) => setDisplayPreference("secondaryShowUsed", item.checked) },
-              { label: "显示上周未用", type: "checkbox", checked: displayPreferences.secondaryShowRemaining, click: (item) => setDisplayPreference("secondaryShowRemaining", item.checked) },
-              { type: "separator" },
-              { label: "显示重置时刻", type: "checkbox", checked: displayPreferences.secondaryShowResetTime, click: (item) => setDisplayPreference("secondaryShowResetTime", item.checked) },
-              { label: "显示重置倒计时", type: "checkbox", checked: displayPreferences.secondaryShowCountdown, click: (item) => setDisplayPreference("secondaryShowCountdown", item.checked) },
-              { label: "显示消耗图", type: "checkbox", checked: displayPreferences.secondaryChartEnabled, click: (item) => setChartEnabled("secondary", item.checked) }
-            ]
-          }
-        ]
-      },
-      {
-        label: "历史统计",
-        submenu: [
-          { label: "打开额度统计页", click: showStatsWindow },
-          { type: "separator" },
-          { label: "显示消耗日历", type: "checkbox", checked: displayPreferences.calendarEnabled, click: (item) => setDisplayPreference("calendarEnabled", item.checked) },
-          { type: "separator" },
-          { label: "显示消耗统计卡", type: "checkbox", checked: displayPreferences.quotaStatsPanelEnabled, click: (item) => setDisplayPreference("quotaStatsPanelEnabled", item.checked) },
-          {
-            label: "统计项目",
-            submenu: QUOTA_STAT_KEYS.map((key) => ({
-              label: QUOTA_STAT_LABELS[key],
-              type: "checkbox",
-              checked: displayPreferences.quotaStatVisibility[key],
-              click: (item) => setQuotaStatVisibility(key, item.checked)
-            }))
-          },
-          {
-            label: "调整排列顺序",
-            submenu: displayPreferences.quotaStatOrder.map((key, index) => ({
-              label: `${index + 1}. ${QUOTA_STAT_LABELS[key]}`,
-              submenu: [
-                { label: "上移", enabled: index > 0, click: () => moveQuotaStatMetric(key, -1) },
-                { label: "下移", enabled: index < displayPreferences.quotaStatOrder.length - 1, click: () => moveQuotaStatMetric(key, 1) }
-              ]
-            }))
-          }
-        ]
-      },
-      {
-        label: "Token 与费用",
-        submenu: [
-          { label: "显示 Token 费用卡", type: "checkbox", checked: displayPreferences.tokenPanelEnabled, click: (item) => setDisplayPreference("tokenPanelEnabled", item.checked) },
-          { type: "separator" },
-          {
-            label: "Token 统计项目",
-            submenu: [
-              { label: "今天", type: "checkbox", checked: displayPreferences.tokenShowToday, click: (item) => setDisplayPreference("tokenShowToday", item.checked) },
-              { label: "本周", type: "checkbox", checked: displayPreferences.tokenShowWeek, click: (item) => setDisplayPreference("tokenShowWeek", item.checked) },
-              { label: "累计", type: "checkbox", checked: displayPreferences.tokenShowLifetime, click: (item) => setDisplayPreference("tokenShowLifetime", item.checked) }
-            ]
-          },
-          {
-            label: "费用换算（API 等值估算）",
-            submenu: [
-              { label: "显示美元 $", type: "checkbox", checked: displayPreferences.tokenShowUsd, click: (item) => setDisplayPreference("tokenShowUsd", item.checked) },
-              { label: "显示人民币 ¥", type: "checkbox", checked: displayPreferences.tokenShowCny, click: (item) => setDisplayPreference("tokenShowCny", item.checked) }
-            ]
-          }
-        ]
-      },
-      { type: "separator" },
-      { label: "刷新额度", click: () => {
-        mainWindow?.webContents.send("quota:refresh");
-        statsWindow?.webContents.send("quota:refresh");
-      } },
-      { label: "切换语言 / Language", click: () => {
-        mainWindow?.webContents.send("ui:toggleLanguage");
-        statsWindow?.webContents.send("ui:toggleLanguage");
-      } },
-      { type: "separator" },
-      { label: "退出", click: () => app.quit() }
-  ];
-  trayMenu = Menu.buildFromTemplate(keepToggleSubmenusOpen(menuTemplate));
+  trayMenu = Menu.buildFromTemplate(buildQuickMenuTemplate());
   bindMagnetMenuHold(trayMenu);
   tray.setContextMenu(trayMenu);
 }
-
 function applyAlwaysOnTop() {
   if (!mainWindow) return;
   if (isAlwaysOnTop) {
@@ -1852,6 +1893,19 @@ app.whenReady().then(async () => {
   ipcMain.handle("window:close", () => app.quit());
   ipcMain.on("window:resizeFromCorner", (_event, value) => resizeMainWindowFromCorner(value));
   ipcMain.handle("stats:close", (event) => BrowserWindow.fromWebContents(event.sender)?.hide());
+  ipcMain.handle("stats:open", () => showStatsWindow());
+  ipcMain.handle("settings:open", (_event, section) => showSettingsWindow(normalizeSettingsSection(section)));
+  ipcMain.handle("settings:close", (event) => {
+    if (settingsWindow?.webContents === event.sender) settingsWindow.hide();
+  });
+  ipcMain.handle("settings:state:get", () => settingsStatePayload());
+  ipcMain.handle("settings:preferences:set", (_event, value) => setSettingsPreferences(value));
+  ipcMain.handle("settings:quotaSource:set", (_event, sourceId) => setQuotaSourceFromSettings(sourceId));
+  ipcMain.handle("settings:diagnostics:copy", () => {
+    const diagnostics = sanitizedDiagnosticsPayload();
+    clipboard.writeText(JSON.stringify(diagnostics, null, 2));
+    return { copied: true, generatedAt: diagnostics.generatedAt };
+  });
   ipcMain.handle("window:alwaysOnTop:get", () => isAlwaysOnTop);
   ipcMain.handle("window:alwaysOnTop:set", (_event, value) => setAlwaysOnTop(value));
   ipcMain.handle("window:magnetState:get", () => magnetRuntimePayload());
@@ -1914,6 +1968,7 @@ app.on("window-all-closed", (event) => {
 });
 
 app.on("before-quit", () => {
+  isQuitting = true;
   clearInterval(quotaRefreshTimer);
   clearInterval(usageInsightsRefreshTimer);
   clearTimeout(magnetPollTimer);
