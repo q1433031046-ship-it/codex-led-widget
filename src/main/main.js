@@ -21,6 +21,12 @@ const {
 } = require("./initialization-service");
 const { createInitializationController } = require("./initialization-controller");
 const {
+  PROFILE_SCOPED_FILES,
+  ensureAccountProfile,
+  loadAccountRegistry,
+  profileDirectory
+} = require("./account-profile-service");
+const {
   activationRect,
   chooseSnapEdge,
   collapsedBounds,
@@ -83,6 +89,9 @@ let magnetProgrammaticMove = false;
 let magnetGeometry = { sideVisible: 7, keepMeter: false };
 let isQuitting = false;
 let lastQuotaError = null;
+let accountRegistry = null;
+let activeAccountProfile = null;
+let activeAccountDirectory = null;
 let magnetState = {
   edge: null,
   displayId: null,
@@ -158,11 +167,22 @@ function defaultDisplayPreferences() {
 }
 
 function windowStatePath() {
-  return path.join(app.getPath("userData"), "window-size.json");
+  return scopedUserDataPath("window-size.json");
 }
 
 function statsWindowStatePath() {
-  return path.join(app.getPath("userData"), "stats-window-state.json");
+  return scopedUserDataPath("stats-window-state.json");
+}
+
+function accountRegistryPath() {
+  return path.join(app.getPath("userData"), "account-profiles.json");
+}
+
+function scopedUserDataPath(filename) {
+  const basePath = activeAccountDirectory && PROFILE_SCOPED_FILES.includes(filename)
+    ? activeAccountDirectory
+    : app.getPath("userData");
+  return path.join(basePath, filename);
 }
 
 function hasVisibleWindowArea(bounds) {
@@ -226,11 +246,11 @@ function scheduleStatsWindowStateSave() {
 }
 
 function displayPreferencesPath() {
-  return path.join(app.getPath("userData"), "display-preferences.json");
+  return scopedUserDataPath("display-preferences.json");
 }
 
 function quotaSnapshotPath() {
-  return path.join(app.getPath("userData"), "last-quota-snapshot.json");
+  return scopedUserDataPath("last-quota-snapshot.json");
 }
 
 function initializationStatePath() {
@@ -396,7 +416,7 @@ function defaultQuotaStatsLedger() {
 }
 
 function quotaStatsLedgerPath() {
-  return path.join(app.getPath("userData"), "quota-stats-ledger.json");
+  return scopedUserDataPath("quota-stats-ledger.json");
 }
 
 function loadQuotaStatsLedger() {
@@ -680,7 +700,7 @@ function currentQuotaPayload(payload = lastQuotaPayload) {
 }
 
 function usageHistoryPath() {
-  return path.join(app.getPath("userData"), "usage-history.json");
+  return scopedUserDataPath("usage-history.json");
 }
 
 function loadUsageHistory() {
@@ -702,6 +722,102 @@ function recordUsageSnapshot(quota) {
       // The widget can keep charting in memory if persistence is unavailable.
     }
   }
+}
+
+function loadAccountScopedState() {
+  displayPreferences = loadDisplayPreferences();
+  lastQuotaPayload = loadQuotaSnapshot();
+  usageHistory = loadUsageHistory();
+  quotaStatsLedger = loadQuotaStatsLedger();
+  if (quotaStatsLedger.needsRebuild) quotaStatsLedger = rebuildQuotaStatsLedger(quotaStatsLedger);
+  lastTrayQuota = lastQuotaPayload;
+  isAlwaysOnTop = displayPreferences.alwaysOnTop !== false;
+}
+
+function initializeAccountProfileStorage() {
+  accountRegistry = loadAccountRegistry(accountRegistryPath());
+  const profile = accountRegistry.profiles.find((item) => item.profileId === accountRegistry.activeProfileId);
+  const directory = profile ? profileDirectory(app.getPath("userData"), profile.profileId) : null;
+  if (profile && directory && fs.existsSync(directory)) {
+    activeAccountProfile = profile;
+    activeAccountDirectory = directory;
+  }
+}
+
+function persistCurrentAccountScopedState() {
+  try {
+    fs.writeFileSync(displayPreferencesPath(), JSON.stringify(displayPreferences), "utf8");
+  } catch {
+    // Keep the active preferences in memory when persistence is temporarily unavailable.
+  }
+  if (lastQuotaPayload) saveQuotaSnapshot(lastQuotaPayload);
+  try {
+    fs.writeFileSync(usageHistoryPath(), JSON.stringify(usageHistory), "utf8");
+    fs.writeFileSync(quotaStatsLedgerPath(), JSON.stringify(quotaStatsLedger), "utf8");
+  } catch {
+    // In-memory history and statistics remain available for the current session.
+  }
+  saveWindowState(mainWindow, windowStatePath());
+  saveWindowState(statsWindow, statsWindowStatePath());
+}
+
+function restoreAccountWindowState() {
+  const savedState = loadWindowState(windowStatePath(), DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE);
+  if (mainWindow && !mainWindow.isDestroyed() && savedState.hasPosition) {
+    const rememberedBounds = {
+      x: savedState.x,
+      y: savedState.y,
+      width: savedState.width,
+      height: savedState.height
+    };
+    const display = resolveDisplayForBounds(screen.getAllDisplays(), rememberedBounds, savedState.displayId);
+    const edge = display && displayPreferences.magneticEnabled && isMagnetEdge(savedState.magnetEdge)
+      ? savedState.magnetEdge
+      : null;
+    const expandedBounds = edge ? snapExpandedBounds(rememberedBounds, display.workArea, edge) : rememberedBounds;
+    magnetState = {
+      edge,
+      displayId: display?.id ?? savedState.displayId ?? null,
+      expanded: true,
+      expandedBounds,
+      meterSide: resolveMeterSide(edge, "left")
+    };
+    setMainWindowBoundsProgrammatically(expandedBounds);
+    saveWindowState(mainWindow, windowStatePath());
+  }
+  const statsState = loadWindowState(statsWindowStatePath(), DEFAULT_STATS_WINDOW_SIZE, MIN_STATS_WINDOW_SIZE);
+  if (statsWindow && !statsWindow.isDestroyed() && statsState.hasPosition) {
+    statsWindow.setBounds({
+      x: Math.round(statsState.x),
+      y: Math.round(statsState.y),
+      width: Math.round(statsState.width),
+      height: Math.round(statsState.height)
+    });
+  }
+}
+
+function activateAccountProfile(account) {
+  if (!account || typeof account !== "object" || !account.profileId) return null;
+  const previousProfileId = activeAccountProfile?.profileId || accountRegistry?.activeProfileId || null;
+  const hadActiveDirectory = Boolean(activeAccountDirectory);
+  const result = ensureAccountProfile(app.getPath("userData"), account);
+  const switched = hadActiveDirectory && previousProfileId && previousProfileId !== result.profile.profileId;
+  if (switched) {
+    clearTimeout(mainWindowStateSaveTimer);
+    clearTimeout(statsWindowStateSaveTimer);
+    persistCurrentAccountScopedState();
+  }
+  accountRegistry = result.registry;
+  activeAccountProfile = result.profile;
+  activeAccountDirectory = result.directory;
+  if (!hadActiveDirectory || switched) {
+    loadAccountScopedState();
+    setDisplayPreferences({}, { notifyMain: false, notifyStats: false, rebuildMenu: false });
+    restoreAccountWindowState();
+    if (!switched && result.migrated) persistCurrentAccountScopedState();
+  }
+  notifySettingsStateChanged();
+  return result;
 }
 
 function setDisplayPreference(key, value) {
@@ -1074,6 +1190,7 @@ async function refreshQuotaSnapshot(options = {}) {
         }),
         getUsdCnyRate()
       ]);
+      activateAccountProfile(quota.account);
       if (quota.activeSourceId && quota.activeSourceId !== displayPreferences.quotaSourceId) {
         setDisplayPreferences({ quotaSourceId: quota.activeSourceId }, { rebuildMenu: false });
       }
@@ -1532,6 +1649,30 @@ function publicQuotaSource(source) {
   };
 }
 
+function publicAccountProfile(profile, activeProfileId = null) {
+  if (!profile || typeof profile !== "object") return null;
+  return {
+    displayName: String(profile.displayName || "未命名账号").slice(0, 120),
+    accountType: String(profile.accountType || "unknown").slice(0, 40),
+    planType: String(profile.planType || "unknown").slice(0, 80),
+    createdAt: profile.createdAt || null,
+    lastSeenAt: profile.lastSeenAt || null,
+    active: profile.profileId === activeProfileId
+  };
+}
+
+function publicAccountState() {
+  const profiles = Array.isArray(accountRegistry?.profiles) ? accountRegistry.profiles : [];
+  const activeProfileId = activeAccountProfile?.profileId || accountRegistry?.activeProfileId || null;
+  return {
+    active: publicAccountProfile(activeAccountProfile, activeProfileId),
+    profiles: profiles
+      .map((profile) => publicAccountProfile(profile, activeProfileId))
+      .filter(Boolean)
+      .sort((left, right) => String(right.lastSeenAt || "").localeCompare(String(left.lastSeenAt || "")))
+  };
+}
+
 function settingsStatePayload() {
   const fallbackSource = lastQuotaPayload ? publicQuotaSource(lastQuotaPayload) : null;
   const sources = (Array.isArray(lastQuotaPayload?.sources) ? lastQuotaPayload.sources : [fallbackSource])
@@ -1551,6 +1692,7 @@ function settingsStatePayload() {
       stale: Boolean(lastQuotaPayload.stale),
       sources
     } : null,
+    account: publicAccountState(),
     refresh: {
       stale: Boolean(lastQuotaPayload?.stale),
       lastError: lastQuotaError,
@@ -2017,7 +2159,8 @@ app.whenReady().then(async () => {
     cachePath: path.join(app.getPath("userData"), "model-price-cache.json"),
     fetchText: fetchOfficialText
   });
-  displayPreferences = loadDisplayPreferences();
+  initializeAccountProfileStorage();
+  loadAccountScopedState();
   initializationState = loadInitializationState(initializationStatePath());
   const layoutBootstrap = applyLayoutBootstrap(
     displayPreferences,
@@ -2035,12 +2178,6 @@ app.whenReady().then(async () => {
       // Keep the safe layout active in memory and retry persistence next launch.
     }
   }
-  isAlwaysOnTop = displayPreferences.alwaysOnTop !== false;
-  lastQuotaPayload = loadQuotaSnapshot();
-  usageHistory = loadUsageHistory();
-  quotaStatsLedger = loadQuotaStatsLedger();
-  if (quotaStatsLedger.needsRebuild) quotaStatsLedger = rebuildQuotaStatsLedger(quotaStatsLedger);
-  lastTrayQuota = lastQuotaPayload;
   setDisplayPreferences({});
   setupInitializationController();
   try {

@@ -177,6 +177,18 @@
               <div><span>当前来源</span><strong id="aboutSource">--</strong></div>
               <div><span>最后刷新</span><strong id="aboutRefresh">--</strong></div>
             </article>
+            <article class="settings-card account-card">
+              <div class="account-heading">
+                <div class="field-copy">
+                  <strong>账号记录</strong>
+                  <small>按账号分别保存额度、历史和窗口偏好。</small>
+                </div>
+                <strong id="accountName" class="account-name">尚未识别</strong>
+                <span id="accountMeta" class="account-meta">等待下一次额度刷新</span>
+              </div>
+              <div id="accountProfiles" class="account-profile-list" aria-live="polite"></div>
+              <p id="accountSwitchNote" class="account-note">登录状态变化后会自动切换到对应账号，不保存密码或登录令牌。</p>
+            </article>
             <article class="settings-card diagnostics-card">
               <div class="field-copy">
                 <strong>复制脱敏诊断</strong>
@@ -193,7 +205,7 @@
         const previewListeners = { state: [], navigate: [], language: [] };
         const previewNow = new Date().toISOString();
         let previewState = {
-          app: { name: "Codex 额度桌面助手", version: "1.1.2-preview" },
+          app: { name: "Codex 额度桌面助手", version: "1.2.0-preview" },
           preferences: {
             preferenceVersion: 3, quotaSourceId: "codex", alwaysOnTop: true,
             primaryCardEnabled: true, secondaryCardEnabled: true, cardsMasterEnabled: true,
@@ -214,6 +226,10 @@
               { id: "codex", label: "Codex", planType: "prolite", planLabel: "Pro", hasShortTerm: false, hasWeekly: true, shortTerm: null, weekly: { usedPercent: 8, remainingPercent: 92, windowDurationMins: 10080, resetsAt: previewNow }, otherWindows: [] },
               { id: "codex_bengalfox", label: "GPT-5.3-Codex-Spark", planType: "prolite", planLabel: "Pro", hasShortTerm: true, hasWeekly: true, shortTerm: { usedPercent: 20, remainingPercent: 80, windowDurationMins: 300, resetsAt: previewNow }, weekly: { usedPercent: 30, remainingPercent: 70, windowDurationMins: 10080, resetsAt: previewNow }, otherWindows: [] }
             ]
+          },
+          account: {
+            active: { displayName: "owner@example.com", accountType: "chatgpt", planType: "pro", lastSeenAt: previewNow, active: true },
+            profiles: [{ displayName: "owner@example.com", accountType: "chatgpt", planType: "pro", lastSeenAt: previewNow, active: true }]
           },
           refresh: { stale: false, lastError: null, fetchedAt: previewNow }
         };

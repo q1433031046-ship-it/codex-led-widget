@@ -153,6 +153,18 @@ input[type="checkbox"] { width: 38px; height: 21px; flex: 0 0 auto; accent-color
 .about-card > div { display: grid; gap: 7px; padding: 18px; background: var(--panel); }
 .about-card span { color: var(--muted); font-size: 10px; }
 .about-card strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.account-card { display: grid; gap: 14px; margin-bottom: 12px; }
+.account-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; }
+.account-heading .field-copy { grid-row: span 2; }
+.account-name { max-width: 320px; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.account-meta { color: var(--muted); font-size: 10px; text-align: right; }
+.account-profile-list { display: grid; gap: 7px; }
+.account-profile-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: rgba(8,14,22,.28); }
+.account-profile-row.active { border-color: rgba(80,216,239,.4); background: rgba(80,216,239,.07); }
+.account-profile-row strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.account-profile-row span { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.account-profile-row em { color: var(--cyan); font-size: 10px; font-style: normal; }
+.account-empty, .account-note { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
 .diagnostics-card { display: flex; align-items: center; justify-content: space-between; gap: 22px; }
 .reset-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 12px; }
 .button-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
@@ -162,6 +174,10 @@ input[type="checkbox"] { width: 38px; height: 21px; flex: 0 0 auto; accent-color
   .settings-grid { grid-template-columns: 1fr; }
   .source-card { grid-template-columns: 1fr; }
   .source-card > * { grid-column: 1; }
+  .account-heading { grid-template-columns: 1fr; }
+  .account-heading .field-copy { grid-row: auto; }
+  .account-name, .account-meta { max-width: none; text-align: left; }
+  .account-profile-row { grid-template-columns: 1fr; gap: 3px; }
   .content { padding: 22px 18px 30px; }
   .settings-group-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
   .settings-group-heading span { text-align: left; }

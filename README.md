@@ -48,7 +48,7 @@
 ## 下载与使用
 
 1. 打开仓库的 [Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases) 页面。
-2. 下载 `Codex-Quota-Desktop-Assistant-1.1.2-Windows-x64-Setup.exe`。
+2. 下载 `Codex-Quota-Desktop-Assistant-1.2.0-Windows-x64-Setup.exe`。
 3. 确认 Windows 版 Codex 已安装，然后双击安装；如本机登录状态不可用，首次启动会自动打开官方登录页。
 4. 右键悬浮窗或系统托盘图标打开快捷菜单，再选择“设置”进入完整设置窗口。
 
@@ -64,6 +64,7 @@
 - “本周”按本地时间每周一 00:00 重新开始。
 - 5 小时与 7 天并非按数组顺序猜测，而是按 Codex 返回的 `windowDurationMins` 识别；当前来源没有某个窗口时，对应卡片和控制项会隐藏或说明不可用。
 - 切换额度来源不会混用消耗曲线；每个来源、每个窗口分别保存历史。
+- 账号名称用于建立本机账号档案；更换登录账号后会自动切换到对应档案，首次迁移会保留旧版根目录文件作为回滚副本。模型会话日志来自本机 Codex 全局目录，无法可靠归属到单一账号，因此不会伪装成账号级数据。
 - 日历默认显示当前月份，可直接选择其他月份；年视图提供 12 个月汇总与全年每日明细两种样式。只有本工具开始记录后的额度百分比数据可用于历史格子。
 - Token 总数来自账户/本机可读取的使用记录；模型明细来自本机 Codex 会话日志，因此会显示单独的统计起始时间。
 - 金额按各模型当前官方输入、缓存输入、缓存写入和输出价格做 API 等值估算，不代表订阅账单或实际扣费；无法取得价格的模型不会混入金额。
@@ -71,10 +72,10 @@
 
 ## 隐私说明
 
-- 使用 Codex 官方账户接口和官方浏览器登录页，不在本工具中输入或保存密码、认证 Token、邮箱、账户 ID、登录地址或设备代码。
+- 使用 Codex 官方账户接口和官方浏览器登录页，不在本工具中输入或保存密码、认证 Token、登录地址或设备代码；经用户同意，会在本机账号档案中保存可见的账号名称和套餐类型，用于区分不同账号的记录。
 - 额度、Token 历史、窗口设置与统计快照保存在当前电脑。
 - 不上传额度或 Token 使用数据。
-- “复制诊断信息”只包含版本、额度来源、窗口时长、百分比、刷新状态等白名单字段，不包含认证信息、账号标识或本机路径。
+- “复制诊断信息”只包含版本、额度来源、窗口时长、百分比、刷新状态等白名单字段，不包含认证信息、账号名称、账号标识或本机路径。
 - 应用只会向 OpenAI 官方模型文档读取公开价格、向公开汇率接口读取 USD/CNY，并向 GitHub Releases 检查最新正式版本；这些请求不会携带你的用量数据。
 
 ## 本地开发
@@ -91,15 +92,15 @@ pnpm run dev
 pnpm run release
 ```
 
-输出位于 `dist/Codex-Quota-Desktop-Assistant-1.1.2-Windows-x64-Setup.exe`。安装后的程序直接从安装目录运行，不会在每次启动时向临时目录解压完整副本。
+输出位于 `dist/Codex-Quota-Desktop-Assistant-1.2.0-Windows-x64-Setup.exe`。安装后的程序直接从安装目录运行，不会在每次启动时向临时目录解压完整副本。
 
 ## GitHub 发布
 
 正式版本由维护者在本地完成检查和构建，再将唯一的 Windows `.exe` 上传到 GitHub Releases。
 
 ```powershell
-git tag v1.1.2
-git push origin v1.1.2
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 ## 项目结构
@@ -129,11 +130,11 @@ This project is a derivative of [xicunwus2025-sys/codex-led-widget](https://gith
 
 ### Download
 
-Download `Codex-Quota-Desktop-Assistant-1.1.2-Windows-x64-Setup.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed Codex app are required. First run safely recovers broken legacy docking coordinates and opens the official browser login when needed. The installed app runs directly from its installation directory instead of unpacking a portable copy on every launch. A newer official release triggers one notification per version.
+Download `Codex-Quota-Desktop-Assistant-1.2.0-Windows-x64-Setup.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed Codex app are required. First run safely recovers broken legacy docking coordinates and opens the official browser login when needed. The installed app runs directly from its installation directory instead of unpacking a portable copy on every launch. A newer official release triggers one notification per version.
 
 ### Privacy
 
-The app uses the official Codex account flow and never asks for or stores your password, authentication token, email address, account ID, login URL, or device code. Quota history and preferences stay on your computer. External requests retrieve public model prices, the USD/CNY exchange rate, and the latest GitHub release metadata; no usage data is included.
+The app uses the official Codex account flow and never asks for or stores your password, authentication token, login URL, or device code. With your approval, it stores the visible account name and plan type locally so quota history and preferences remain separated when you change accounts. External requests retrieve public model prices, the USD/CNY exchange rate, and the latest GitHub release metadata; no usage data is included.
 
 ### Build
 

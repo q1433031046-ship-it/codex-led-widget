@@ -32,12 +32,14 @@ for (const section of ["quota", "window", "stats", "about"]) {
   assert.match(html, new RegExp(`id="section-${section}"`));
   assert.match(html, new RegExp(`data-section="${section}"`));
 }
-for (const id of ["quotaSourceSelect", "meterSourceSelect", "alwaysOnTopToggle", "copyDiagnosticsButton", "saveStatus"]) {
+for (const id of ["quotaSourceSelect", "meterSourceSelect", "alwaysOnTopToggle", "copyDiagnosticsButton", "saveStatus", "accountName", "accountProfiles"]) {
   assert.match(html, new RegExp(`id="${id}"`));
   assert.match(script, new RegExp(`getElementById\\("${id}"\\)`));
 }
 assert.match(script, /onSettingsStateChanged/);
 assert.match(script, /setSettingsPreferences/);
+assert.match(script, /renderAccount/);
+assert.match(main, /function publicAccountState\(\)/);
 assert.match(css, /\.settings-shell/);
 assert.doesNotMatch(html, />\s*应用\s*</);
 

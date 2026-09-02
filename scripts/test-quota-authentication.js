@@ -15,7 +15,11 @@ function fakeSession({ loggedIn = false, loginSucceeds = true } = {}) {
       calls.push([method, params]);
       if (method === "account/read") {
         accountReads += 1;
-        return { account: loggedIn || accountReads > 1 ? { type: "chatgpt" } : null };
+        return {
+          account: loggedIn || accountReads > 1
+            ? { type: "chatgpt", email: "owner@example.com", planType: "pro" }
+            : null
+        };
       }
       if (method === "account/login/start") {
         return { loginId: "login-1", authUrl: "https://auth.openai.com/example" };
@@ -49,6 +53,9 @@ function fakeSession({ loggedIn = false, loginSucceeds = true } = {}) {
     }
   });
   assert.ok(result.rateLimits);
+  assert.match(result.account.profileId, /^acct-[a-f0-9]{24}$/);
+  assert.equal(result.account.displayName, "owner@example.com");
+  assert.equal(result.account.planType, "pro");
   assert.deepEqual(phases, ["checking", "login_required", "waiting_for_login", "refreshing"]);
   assert.deepEqual(urls, ["https://auth.openai.com/example"]);
   assert.equal(waiterWasReadyWhenBrowserOpened, true, "login completion waiter must exist before opening the browser");

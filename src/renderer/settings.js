@@ -23,6 +23,10 @@ const elements = {
   aboutPlan: document.getElementById("aboutPlan"),
   aboutSource: document.getElementById("aboutSource"),
   aboutRefresh: document.getElementById("aboutRefresh"),
+  accountName: document.getElementById("accountName"),
+  accountMeta: document.getElementById("accountMeta"),
+  accountProfiles: document.getElementById("accountProfiles"),
+  accountSwitchNote: document.getElementById("accountSwitchNote"),
 };
 
 const sectionTitles = { quota: "额度与仪表", window: "窗口与卡片", stats: "统计与费用", about: "关于与诊断" };
@@ -62,6 +66,47 @@ function formatRefresh(value) {
   const date = new Date(value || "");
   if (!Number.isFinite(date.getTime())) return "尚未读取";
   return date.toLocaleString(language === "zh" ? "zh-CN" : "en-US", { hour12: false });
+}
+
+function formatAccountPlan(value) {
+  const normalized = String(value || "").toLowerCase();
+  return { pro: "Pro", prolite: "Pro", plus: "Plus", free: "Free" }[normalized] || (value || "未知套餐");
+}
+
+function renderAccount() {
+  const account = state?.account || {};
+  const active = account.active;
+  elements.accountName.textContent = active?.displayName || "尚未识别";
+  elements.accountMeta.textContent = active
+    ? `${active.accountType || "unknown"} · ${formatAccountPlan(active.planType)} · 最近 ${formatRefresh(active.lastSeenAt)}`
+    : "等待下一次额度刷新";
+  elements.accountProfiles.replaceChildren();
+  const profiles = Array.isArray(account.profiles) ? account.profiles : [];
+  if (!profiles.length) {
+    const empty = document.createElement("span");
+    empty.className = "account-empty";
+    empty.textContent = "首次成功读取额度后会在这里建立账号记录。";
+    elements.accountProfiles.appendChild(empty);
+  } else {
+    for (const profile of profiles) {
+      const row = document.createElement("div");
+      row.className = `account-profile-row${profile.active ? " active" : ""}`;
+      const name = document.createElement("strong");
+      name.textContent = profile.displayName || "未命名账号";
+      const meta = document.createElement("span");
+      meta.textContent = `${profile.accountType || "unknown"} · ${formatAccountPlan(profile.planType)} · ${formatRefresh(profile.lastSeenAt)}`;
+      row.append(name, meta);
+      if (profile.active) {
+        const badge = document.createElement("em");
+        badge.textContent = "当前";
+        row.appendChild(badge);
+      }
+      elements.accountProfiles.appendChild(row);
+    }
+  }
+  elements.accountSwitchNote.textContent = profiles.length > 1
+    ? "检测到多个账号；切换 Codex 登录状态后会自动使用各自的额度、历史和窗口偏好。"
+    : "登录状态变化后会自动切换到对应账号，不保存密码或登录令牌。";
 }
 
 function renderSources() {
@@ -165,6 +210,7 @@ function renderSummary() {
   elements.aboutPlan.textContent = state?.quota?.planLabel || "--";
   elements.aboutSource.textContent = source?.label || "--";
   elements.aboutRefresh.textContent = stale ? `缓存 · ${formatRefresh(state?.refresh?.fetchedAt)}` : formatRefresh(state?.refresh?.fetchedAt);
+  renderAccount();
 }
 
 function render() {

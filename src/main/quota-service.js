@@ -1,5 +1,6 @@
 const { normalizeRateLimitResponse } = require("./quota-normalizer");
 const { createAppServerSession, sanitizeAppServerError } = require("./app-server-session");
+const { deriveAccountProfile } = require("./account-profile-service");
 
 class CodexAuthRequiredError extends Error {
   constructor(message = "需要登录 Codex 才能读取额度。") {
@@ -10,12 +11,13 @@ class CodexAuthRequiredError extends Error {
 }
 
 async function getQuota(options = {}) {
-  const { rateLimits: response, accountUsage } = await requestAccountData(options);
+  const { rateLimits: response, accountUsage, account } = await requestAccountData(options);
   const localTodayTokens = options.localTodayTokens ?? null;
 
   return {
     ...normalizeRateLimitResponse(response, options.sourceId || "codex"),
-    tokenUsage: normalizeAccountUsage(accountUsage, localTodayTokens)
+    tokenUsage: normalizeAccountUsage(accountUsage, localTodayTokens),
+    account: account || null
   };
 }
 
@@ -184,7 +186,11 @@ async function requestAccountDataAttempt(options = {}) {
     } catch {
       // Token statistics are optional; quota display must continue to work.
     }
-    return { rateLimits, accountUsage };
+    return {
+      rateLimits,
+      accountUsage,
+      account: deriveAccountProfile(accountState.account)
+    };
   } catch (error) {
     if (error?.code === "CODEX_AUTH_REQUIRED") throw error;
     const wrapped = new Error(sanitizeAppServerError(error));
