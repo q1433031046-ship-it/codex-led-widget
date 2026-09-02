@@ -165,8 +165,8 @@ async function requestAccountDataAttempt(options = {}) {
         (params) => params?.loginId === login.loginId,
         300000
       );
-      await Promise.resolve(onLoginUrl(login.authUrl));
       onPhase("waiting_for_login");
+      await Promise.resolve(onLoginUrl(login.authUrl));
       const completed = await completedPromise;
       if (!completed?.success) {
         throw new Error(completed?.error || "Codex 登录未完成。");
