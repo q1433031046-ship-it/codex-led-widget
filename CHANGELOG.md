@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2 - 2026-09-02
+
+- Normalized widget, statistics, and settings typography across window sizes.
+- Added responsive type caps and line-height rules so large quota/token values stay visually balanced with their labels.
+
 ## 1.2.1 - 2026-09-02
 
 - 设置页新增今日 5 小时、今日总消耗、本周 5 小时和累计总消耗四个独立开关；关闭整张统计卡时仍会保留各项选择。

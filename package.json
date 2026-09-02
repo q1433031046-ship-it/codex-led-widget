@@ -1,6 +1,6 @@
 {
   "name": "codex-led-widget",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "A customizable Windows desktop assistant for Codex quota, usage history, costs, and calendar insights.",
   "main": "src/main/main.js",
   "author": "Codex Quota Desktop Assistant Contributors",
@@ -48,13 +48,13 @@
       ]
     },
     "nsis": {
-      "artifactName": "Codex-Quota-Desktop-Assistant-1.2.1-Windows-x64-Setup.exe",
+      "artifactName": "Codex-Quota-Desktop-Assistant-1.2.2-Windows-x64-Setup.exe",
       "oneClick": true,
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Codex 额度桌面助手",
-      "uninstallDisplayName": "Codex 额度桌面助手 1.2.1",
+      "uninstallDisplayName": "Codex 额度桌面助手 1.2.2",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": false
     }

@@ -19,8 +19,12 @@ assert.match(stats, /\[1e12, "T"\]/);
 assert.match(renderer, /todayPrimaryQuota: "今日 5小时"/);
 assert.match(renderer, /todayTotalQuota: "今日总消耗"/);
 assert.match(css, /\.quota-stats-card\s*\{[^}]*container-type:\s*size;/s);
+assert.match(css, /\.quota-card\s*\{[^}]*container-type:\s*size;/s);
 assert.match(css, /\.token-metric strong\s*\{[^}]*max-width:\s*100%;[^}]*overflow:\s*hidden;/s);
 assert.match(css, /data-value-length="6"/);
+assert.match(css, /\.meter-copy strong\s*\{[^}]*font-size:\s*clamp\(10px, min\(26cqw, 28cqh\), 44px\)/s);
+assert.match(css, /\.quota-stats-grid\[data-visible-count="1"\] \.quota-stat-metric strong\s*\{[^}]*30px/s);
+assert.match(css, /\.token-metrics\[data-visible-count="1"\] \.token-metric strong\s*\{[^}]*30px/s);
 
 for (const count of [1, 2, 3]) {
   assert.match(css, new RegExp(`quota-stats-grid\\[data-visible-count="${count}"\\]`));

@@ -47,6 +47,8 @@ body {
 body {
   color: var(--text);
   background: #111923;
+  font-size: 12px;
+  line-height: 1.4;
   transition: --accent 2400ms cubic-bezier(0.22, 1, 0.36, 1), --accent-strong 2400ms cubic-bezier(0.22, 1, 0.36, 1), --accent-soft 2400ms cubic-bezier(0.22, 1, 0.36, 1), --accent-border 2400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -74,8 +76,8 @@ body {
 }
 
 .titlebar > div { display: grid; min-width: 0; gap: 2px; }
-.titlebar strong { font-size: clamp(14px, 3.3vw, 21px); }
-.titlebar span { overflow: hidden; color: var(--muted); font-size: clamp(9px, 2vw, 12px); text-overflow: ellipsis; white-space: nowrap; }
+.titlebar strong { font-size: clamp(15px, 3vw, 20px); line-height: 1.1; }
+.titlebar span { overflow: hidden; color: var(--muted); font-size: clamp(10px, 1.8vw, 12px); line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 
 .titlebar nav { display: flex; gap: 6px; -webkit-app-region: no-drag; }
 button { min-width: 28px; height: 26px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; color: var(--text); background: rgba(255,255,255,.06); font-weight: 750; }
@@ -99,8 +101,8 @@ button.spinning { animation: spin 900ms linear infinite; }
 .section { margin-bottom: clamp(14px, 4vh, 26px); }
 .section:last-child { margin-bottom: 0; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-h2 { margin: 0 0 clamp(8px, 2vh, 13px); color: rgba(241,245,249,.92); font-size: clamp(11px, 2.6vw, 16px); }
-.section-heading small { overflow: hidden; color: var(--muted); font-size: clamp(8px, 1.8vw, 11px); text-overflow: ellipsis; white-space: nowrap; }
+h2 { margin: 0 0 clamp(8px, 2vh, 13px); color: rgba(241,245,249,.92); font-size: clamp(12px, 2.4vw, 15px); line-height: 1.2; }
+.section-heading small { overflow: hidden; color: var(--muted); font-size: clamp(9px, 1.6vw, 11px); line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 
 .metric-grid,
 .window-grid {
@@ -125,14 +127,14 @@ h2 { margin: 0 0 clamp(8px, 2vh, 13px); color: rgba(241,245,249,.92); font-size:
 }
 
 .metric-card span,
-.window-card span { overflow: hidden; color: var(--muted); font-size: clamp(9px, 2.1vw, 13px); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.metric-card strong { color: var(--accent); font-size: clamp(18px, 5vw, 30px); line-height: 1; font-variant-numeric: tabular-nums; }
-.window-card strong { overflow: hidden; font-size: clamp(11px, 2.8vw, 17px); text-overflow: ellipsis; white-space: nowrap; }
+.window-card span { overflow: hidden; color: var(--muted); font-size: clamp(10px, 1.9vw, 12px); font-weight: 650; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.metric-card strong { color: var(--accent); font-size: clamp(17px, 4.5vw, 27px); line-height: 1; font-variant-numeric: tabular-nums; }
+.window-card strong { overflow: hidden; font-size: clamp(12px, 2.6vw, 16px); line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
 
 .track { height: 4px; margin-top: 5px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.1); }
 .track i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent-strong); box-shadow: 0 0 7px var(--accent-strong); transition: width 700ms ease; }
 
-.token-stat small { min-height: 1em; overflow: hidden; color: var(--accent); font-size: clamp(8px, 1.8vw, 11px); text-overflow: ellipsis; white-space: nowrap; }
+.token-stat small { min-height: 1em; overflow: hidden; color: var(--accent); font-size: clamp(9px, 1.6vw, 11px); line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 
 .calendar-section { position: relative; }
 .calendar-heading { align-items: center; }
