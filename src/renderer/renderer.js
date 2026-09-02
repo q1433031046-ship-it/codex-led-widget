@@ -474,11 +474,18 @@ function stateLabel(state) {
 function formatTokenCount(value) {
   const count = Number(value);
   if (!Number.isFinite(count) || count < 0) return "--";
+  const units = [
+    [1e18, "E"],
+    [1e15, "P"],
+    [1e12, "T"],
+    [1e9, "B"],
+    [1e6, "M"],
+    [1e3, "K"]
+  ];
+  const unit = units.find(([threshold]) => count >= threshold);
+  if (!unit) return new Intl.NumberFormat(language === "zh" ? "zh-CN" : "en-US", { maximumFractionDigits: 0 }).format(count);
   const formatter = new Intl.NumberFormat(language === "zh" ? "zh-CN" : "en-US", { maximumFractionDigits: 1 });
-  if (count >= 1_000_000_000) return `${formatter.format(count / 1_000_000_000)}B`;
-  if (count >= 1_000_000) return `${formatter.format(count / 1_000_000)}M`;
-  if (count >= 1_000) return `${formatter.format(count / 1_000)}K`;
-  return formatter.format(count);
+  return `${formatter.format(count / unit[0])}${unit[1]}`;
 }
 
 function formatMoneyEstimate(period, totalTokens) {
@@ -520,6 +527,7 @@ function renderTokenUsage() {
   for (const [period, row, valueElement, usdElement, value, enabled] of rows) {
     row.hidden = !enabled;
     valueElement.textContent = formatTokenCount(value);
+    row.dataset.valueLength = String(Math.min(10, valueElement.textContent.length));
     valueElement.title = Number.isFinite(Number(value)) ? Number(value).toLocaleString("en-US") : "";
     const moneyEnabled = displayPreferences.tokenShowUsd || displayPreferences.tokenShowCny;
     usdElement.hidden = !moneyEnabled;

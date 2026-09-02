@@ -48,7 +48,7 @@
 ## 下载与使用
 
 1. 打开仓库的 [Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases) 页面。
-2. 下载 `Codex-Quota-Desktop-Assistant-1.2.0-Windows-x64-Setup.exe`。
+2. 下载 `Codex-Quota-Desktop-Assistant-1.2.1-Windows-x64-Setup.exe`。
 3. 确认 Windows 版 Codex 已安装，然后双击安装；如本机登录状态不可用，首次启动会自动打开官方登录页。
 4. 右键悬浮窗或系统托盘图标打开快捷菜单，再选择“设置”进入完整设置窗口。
 
@@ -92,15 +92,15 @@ pnpm run dev
 pnpm run release
 ```
 
-输出位于 `dist/Codex-Quota-Desktop-Assistant-1.2.0-Windows-x64-Setup.exe`。安装后的程序直接从安装目录运行，不会在每次启动时向临时目录解压完整副本。
+输出位于 `dist/Codex-Quota-Desktop-Assistant-1.2.1-Windows-x64-Setup.exe`。安装后的程序直接从安装目录运行，不会在每次启动时向临时目录解压完整副本。
 
 ## GitHub 发布
 
 正式版本由维护者在本地完成检查和构建，再将唯一的 Windows `.exe` 上传到 GitHub Releases。
 
 ```powershell
-git tag v1.2.0
-git push origin v1.2.0
+git tag v1.2.1
+git push origin v1.2.1
 ```
 
 ## 项目结构
@@ -130,7 +130,7 @@ This project is a derivative of [xicunwus2025-sys/codex-led-widget](https://gith
 
 ### Download
 
-Download `Codex-Quota-Desktop-Assistant-1.2.0-Windows-x64-Setup.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed Codex app are required. First run safely recovers broken legacy docking coordinates and opens the official browser login when needed. The installed app runs directly from its installation directory instead of unpacking a portable copy on every launch. A newer official release triggers one notification per version.
+Download `Codex-Quota-Desktop-Assistant-1.2.1-Windows-x64-Setup.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed Codex app are required. First run safely recovers broken legacy docking coordinates and opens the official browser login when needed. The installed app runs directly from its installation directory instead of unpacking a portable copy on every launch. A newer official release triggers one notification per version.
 
 ### Privacy
 

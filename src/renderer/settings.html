@@ -154,6 +154,11 @@
             <div class="settings-group-heading"><strong>统计展示</strong><span>关闭统计总开关后，相关图表不会占用悬浮窗空间。</span></div>
             <div class="settings-grid">
               <label class="settings-card toggle-row"><span class="field-copy"><strong>消耗统计卡</strong><small>在悬浮窗显示累计消耗。</small></span><input type="checkbox" data-pref="quotaStatsPanelEnabled" /></label>
+              <div class="settings-group-heading inline-group-heading"><strong>统计指标</strong><span>四项可独立关闭；总开关只控制整张统计卡是否显示。</span></div>
+              <label class="settings-card toggle-row stat-visibility-toggle"><span class="field-copy"><strong>今日 5 小时</strong><small>今日 5 小时额度消耗。</small></span><input type="checkbox" data-stat-visibility="todayPrimary" /></label>
+              <label class="settings-card toggle-row stat-visibility-toggle"><span class="field-copy"><strong>今日总消耗</strong><small>今日所有额度周期消耗。</small></span><input type="checkbox" data-stat-visibility="todayTotal" /></label>
+              <label class="settings-card toggle-row stat-visibility-toggle"><span class="field-copy"><strong>本周 5 小时</strong><small>本周 5 小时额度累计。</small></span><input type="checkbox" data-stat-visibility="weekPrimary" /></label>
+              <label class="settings-card toggle-row stat-visibility-toggle"><span class="field-copy"><strong>累计总消耗</strong><small>安装以来的总额度统计。</small></span><input type="checkbox" data-stat-visibility="lifetimeTotal" /></label>
               <label class="settings-card toggle-row" data-window-control="primary" data-depends-on="statsPanel"><span class="field-copy"><strong>5 小时消耗图</strong><small class="availability-reason" data-window="primary"></small></span><input type="checkbox" data-pref="primaryChartEnabled" /></label>
               <label class="settings-card toggle-row" data-window-control="secondary" data-depends-on="statsPanel"><span class="field-copy"><strong>7 天消耗图</strong><small class="availability-reason" data-window="secondary"></small></span><input type="checkbox" data-pref="secondaryChartEnabled" /></label>
               <label class="settings-card toggle-row"><span class="field-copy"><strong>消耗日历</strong><small>在统计页显示日历热力图。</small></span><input type="checkbox" data-pref="calendarEnabled" /></label>
@@ -205,7 +210,7 @@
         const previewListeners = { state: [], navigate: [], language: [] };
         const previewNow = new Date().toISOString();
         let previewState = {
-          app: { name: "Codex 额度桌面助手", version: "1.2.0-preview" },
+          app: { name: "Codex 额度桌面助手", version: "1.2.1-preview" },
           preferences: {
             preferenceVersion: 3, quotaSourceId: "codex", alwaysOnTop: true,
             primaryCardEnabled: true, secondaryCardEnabled: true, cardsMasterEnabled: true,
@@ -218,6 +223,7 @@
             secondaryShowCountdown: true, quotaStatsPanelEnabled: false, calendarEnabled: true,
             calendarUnit: "quota", calendarRange: "month", tokenPanelEnabled: true,
             tokenShowToday: true, tokenShowWeek: true, tokenShowLifetime: true,
+            quotaStatVisibility: { todayPrimary: true, todayTotal: true, weekPrimary: true, lifetimeTotal: true },
             tokenShowUsd: false, tokenShowCny: false
           },
           quota: {
@@ -237,7 +243,13 @@
         window.codexQuota = {
           getSettingsState: async () => structuredClone(previewState),
           setSettingsPreferences: async (changes) => {
-            previewState.preferences = { ...previewState.preferences, ...changes };
+            previewState.preferences = {
+              ...previewState.preferences,
+              ...changes,
+              ...(changes.quotaStatVisibility ? {
+                quotaStatVisibility: { ...previewState.preferences.quotaStatVisibility, ...changes.quotaStatVisibility }
+              } : {})
+            };
             publishPreviewState();
             return structuredClone(previewState);
           },

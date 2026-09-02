@@ -36,10 +36,16 @@ for (const id of ["quotaSourceSelect", "meterSourceSelect", "alwaysOnTopToggle",
   assert.match(html, new RegExp(`id="${id}"`));
   assert.match(script, new RegExp(`getElementById\\("${id}"\\)`));
 }
+for (const key of ["todayPrimary", "todayTotal", "weekPrimary", "lifetimeTotal"]) {
+  assert.match(html, new RegExp(`data-stat-visibility="${key}"`));
+  assert.match(script, new RegExp(`data-stat-visibility`));
+}
 assert.match(script, /onSettingsStateChanged/);
 assert.match(script, /setSettingsPreferences/);
 assert.match(script, /renderAccount/);
 assert.match(main, /function publicAccountState\(\)/);
+assert.match(main, /input\.quotaStatVisibility/);
+assert.match(main, /quotaStatVisibility = \{/);
 assert.match(css, /\.settings-shell/);
 assert.doesNotMatch(html, />\s*应用\s*</);
 
@@ -69,6 +75,17 @@ try {
   Module._load = originalLoad;
 }
 const security = mainModule.exports.__settingsSecurityTest;
+const visibilityChanges = security.sanitizedSettingsChanges({
+  quotaStatVisibility: { todayPrimary: false, lifetimeTotal: true, injected: true },
+  authToken: "must-not-pass"
+});
+assert.deepEqual(visibilityChanges.quotaStatVisibility, {
+  todayPrimary: false,
+  todayTotal: true,
+  weekPrimary: true,
+  lifetimeTotal: true
+});
+assert.equal(Object.hasOwn(visibilityChanges, "authToken"), false);
 const sanitizedMessage = security.sanitizeDiagnosticMessage("Failed at C:\\Users\\alice\\private\\state.json token:secret-value");
 assert.doesNotMatch(sanitizedMessage, /alice|private|secret-value/);
 security.setQuota({

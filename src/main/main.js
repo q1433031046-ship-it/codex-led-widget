@@ -1918,6 +1918,18 @@ function sanitizedSettingsChanges(value) {
   for (const [key, allowed] of Object.entries(enums)) {
     if (allowed.includes(input[key])) changes[key] = input[key];
   }
+  if (input.quotaStatVisibility && typeof input.quotaStatVisibility === "object") {
+    const visibility = {};
+    for (const key of QUOTA_STAT_KEYS) {
+      if (typeof input.quotaStatVisibility[key] === "boolean") visibility[key] = input.quotaStatVisibility[key];
+    }
+    if (Object.keys(visibility).length) {
+      changes.quotaStatVisibility = {
+        ...displayPreferences.quotaStatVisibility,
+        ...visibility
+      };
+    }
+  }
   return changes;
 }
 

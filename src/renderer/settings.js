@@ -14,6 +14,7 @@ const elements = {
   resetColumnSizingButton: document.getElementById("resetColumnSizingButton"),
   resetMeterSizingButton: document.getElementById("resetMeterSizingButton"),
   preferenceControls: [...document.querySelectorAll("[data-pref]")],
+  statVisibilityControls: [...document.querySelectorAll("[data-stat-visibility]")],
   sourceAvailability: document.getElementById("sourceAvailability"),
   otherWindows: document.getElementById("otherWindows"),
   navPlan: document.getElementById("navPlan"),
@@ -198,6 +199,10 @@ function renderPreferences() {
     if (control.type === "checkbox") control.checked = Boolean(value);
     else if (value !== undefined && value !== null) control.value = String(value);
   }
+  const visibility = preferences.quotaStatVisibility || {};
+  for (const control of elements.statVisibilityControls) {
+    control.checked = visibility[control.dataset.statVisibility] !== false;
+  }
 }
 
 function renderSummary() {
@@ -239,6 +244,36 @@ async function updatePreference(control) {
   }
 }
 
+async function updateStatVisibility(control) {
+  const key = control.dataset.statVisibility;
+  if (!key || !state) return;
+  const previous = state.preferences?.quotaStatVisibility?.[key] !== false;
+  const value = control.checked;
+  state = {
+    ...state,
+    preferences: {
+      ...state.preferences,
+      quotaStatVisibility: { ...state.preferences.quotaStatVisibility, [key]: value }
+    }
+  };
+  setStatus("保存中…");
+  try {
+    state = await window.codexQuota.setSettingsPreferences({ quotaStatVisibility: { [key]: value } });
+    render();
+    setStatus("已保存", "success");
+  } catch (error) {
+    state = {
+      ...state,
+      preferences: {
+        ...state.preferences,
+        quotaStatVisibility: { ...state.preferences.quotaStatVisibility, [key]: previous }
+      }
+    };
+    render();
+    setStatus(error?.message || "保存失败", "error");
+  }
+}
+
 async function runSettingsAction(action, successMessage) {
   setStatus("处理中…");
   try {
@@ -251,6 +286,7 @@ async function runSettingsAction(action, successMessage) {
 
 for (const button of elements.navButtons) button.addEventListener("click", () => navigate(button.dataset.section));
 for (const control of elements.preferenceControls) control.addEventListener("change", () => updatePreference(control));
+for (const control of elements.statVisibilityControls) control.addEventListener("change", () => updateStatVisibility(control));
 
 elements.quotaSourceSelect.addEventListener("change", async () => {
   const previous = state?.preferences?.quotaSourceId;

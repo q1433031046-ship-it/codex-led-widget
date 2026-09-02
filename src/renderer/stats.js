@@ -213,12 +213,12 @@ function formatPercent(value) {
 
 function formatTokens(value) {
   const count = Number(value);
-  if (!Number.isFinite(count)) return "--";
+  if (!Number.isFinite(count) || count < 0) return "--";
+  const units = [[1e18, "E"], [1e15, "P"], [1e12, "T"], [1e9, "B"], [1e6, "M"], [1e3, "K"]];
+  const unit = units.find(([threshold]) => count >= threshold);
+  if (!unit) return new Intl.NumberFormat(language === "zh" ? "zh-CN" : "en-US", { maximumFractionDigits: 0 }).format(count);
   const formatter = new Intl.NumberFormat(language === "zh" ? "zh-CN" : "en-US", { maximumFractionDigits: 1 });
-  if (count >= 1e9) return `${formatter.format(count / 1e9)}B`;
-  if (count >= 1e6) return `${formatter.format(count / 1e6)}M`;
-  if (count >= 1e3) return `${formatter.format(count / 1e3)}K`;
-  return formatter.format(count);
+  return `${formatter.format(count / unit[0])}${unit[1]}`;
 }
 
 function formatMoneyAmount(dollarsValue, options = {}) {

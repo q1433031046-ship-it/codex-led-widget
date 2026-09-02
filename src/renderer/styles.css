@@ -928,10 +928,14 @@ body[data-card-resizing="true"] * {
 }
 
 .token-metric strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   color: rgba(248, 250, 252, 0.96);
-  font-size: clamp(7px, min(3.2cqw, 9cqh), 24px);
+  font-size: clamp(7px, min(3cqw, 8.5cqh), 22px);
   font-weight: 780;
   letter-spacing: -0.02em;
+  text-overflow: ellipsis;
   transition: font-size 220ms cubic-bezier(0.22, 1, 0.36, 1);
   white-space: nowrap;
 }
@@ -945,7 +949,7 @@ body[data-card-resizing="true"] * {
 }
 
 .token-metrics[data-visible-count="2"] .token-metric strong {
-  font-size: clamp(14px, min(7.5cqw, 34cqh), 38px);
+  font-size: clamp(12px, min(6.2cqw, 28cqh), 30px);
 }
 
 .token-metrics[data-visible-count="1"] {
@@ -962,7 +966,18 @@ body[data-card-resizing="true"] * {
 }
 
 .token-metrics[data-visible-count="1"] .token-metric strong {
-  font-size: clamp(18px, min(11cqw, 46cqh), 48px);
+  font-size: clamp(16px, min(10cqw, 42cqh), 42px);
+}
+
+.token-metrics .token-metric[data-value-length="6"] strong {
+  font-size: clamp(11px, min(5.2cqw, 25cqh), 26px);
+}
+
+.token-metrics .token-metric[data-value-length="7"] strong,
+.token-metrics .token-metric[data-value-length="8"] strong,
+.token-metrics .token-metric[data-value-length="9"] strong,
+.token-metrics .token-metric[data-value-length="10"] strong {
+  font-size: clamp(10px, min(4.6cqw, 22cqh), 22px);
 }
 
 .token-money {

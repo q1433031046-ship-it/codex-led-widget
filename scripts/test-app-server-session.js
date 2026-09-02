@@ -46,7 +46,7 @@ async function testHandshakeOrder() {
   await session.request("account/read", { refreshToken: true });
   assert.deepEqual(sent.map((message) => message.method), ["initialize", "initialized", "account/read"]);
   assert.equal(sent[0].params.clientInfo.name, "codex-led-widget");
-  assert.equal(sent[0].params.clientInfo.version, "1.2.0");
+  assert.equal(sent[0].params.clientInfo.version, "1.2.1");
   assert.deepEqual(sent[2].params, { refreshToken: true });
   session.close();
   assert.equal(child.killed, true);
