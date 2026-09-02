@@ -1441,6 +1441,9 @@ function createWindow() {
       notifyMagnetState();
       const target = magnetCollapsedBounds();
       if (target) setMainWindowBoundsProgrammatically(target);
+      // Persist the re-anchored expanded bounds so a stale display/DPI
+      // coordinate is repaired permanently instead of on every launch.
+      saveWindowState(mainWindow, windowStatePath());
       mainWindow.showInactive();
     } else {
       mainWindow.show();
