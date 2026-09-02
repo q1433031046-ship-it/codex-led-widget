@@ -1921,7 +1921,9 @@ function sanitizedSettingsChanges(value) {
   if (input.quotaStatVisibility && typeof input.quotaStatVisibility === "object") {
     const visibility = {};
     for (const key of QUOTA_STAT_KEYS) {
-      if (typeof input.quotaStatVisibility[key] === "boolean") visibility[key] = input.quotaStatVisibility[key];
+      if (Object.hasOwn(input.quotaStatVisibility, key) && typeof input.quotaStatVisibility[key] === "boolean") {
+        visibility[key] = input.quotaStatVisibility[key];
+      }
     }
     if (Object.keys(visibility).length) {
       changes.quotaStatVisibility = {
