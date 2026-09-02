@@ -784,6 +784,16 @@ function restoreAccountWindowState() {
     };
     setMainWindowBoundsProgrammatically(expandedBounds);
     saveWindowState(mainWindow, windowStatePath());
+  } else if (mainWindow && !mainWindow.isDestroyed()) {
+    const currentBounds = mainWindow.getBounds();
+    magnetState = {
+      edge: null,
+      displayId: null,
+      expanded: true,
+      expandedBounds: currentBounds,
+      meterSide: resolveMeterSide(null, "left")
+    };
+    notifyMagnetState();
   }
   const statsState = loadWindowState(statsWindowStatePath(), DEFAULT_STATS_WINDOW_SIZE, MIN_STATS_WINDOW_SIZE);
   if (statsWindow && !statsWindow.isDestroyed() && statsState.hasPosition) {
