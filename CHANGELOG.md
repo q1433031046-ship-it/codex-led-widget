@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2 - 2026-09-02
+
+- 修复首次初始化期间登录完成通知过早到达导致流程失败的问题，并增加会话通知回放与可重试状态。
+- 修复多显示器、负坐标、任务栏和 DPI 变化下磁吸窗口越界/被裁切的问题；展开窗口统一约束到目标显示器工作区。
+- 重排设置页行为分组，明确仪表、卡片、统计、Token 和颜色选项的总开关依赖；保存的子选项不会被清空。
+- 增加初始化、通知回放、旧屏幕 ID 和工作区约束回归测试。
+
 ## 1.1.1 - 2026-08-30
 
 - Completed the Codex App Server handshake by sending the required `initialized` notification before account and rate-limit requests.

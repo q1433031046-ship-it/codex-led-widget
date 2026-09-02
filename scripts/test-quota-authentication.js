@@ -38,15 +38,20 @@ function fakeSession({ loggedIn = false, loginSucceeds = true } = {}) {
   const session = fakeSession();
   const phases = [];
   const urls = [];
+  let waiterWasReadyWhenBrowserOpened = false;
   const result = await requestAccountData({
     createSession: () => session,
     ensureAuthenticated: true,
     onPhase: (phase) => phases.push(phase),
-    onLoginUrl: (url) => urls.push(url)
+    onLoginUrl: (url) => {
+      urls.push(url);
+      waiterWasReadyWhenBrowserOpened = session.calls.some((call) => call[0] === "wait");
+    }
   });
   assert.ok(result.rateLimits);
   assert.deepEqual(phases, ["checking", "login_required", "waiting_for_login", "refreshing"]);
   assert.deepEqual(urls, ["https://auth.openai.com/example"]);
+  assert.equal(waiterWasReadyWhenBrowserOpened, true, "login completion waiter must exist before opening the browser");
   assert.deepEqual(session.calls.map((call) => call[0]), [
     "start",
     "account/read",

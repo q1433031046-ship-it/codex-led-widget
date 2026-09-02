@@ -1,6 +1,6 @@
 {
   "name": "codex-led-widget",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "A customizable Windows desktop assistant for Codex quota, usage history, costs, and calendar insights.",
   "main": "src/main/main.js",
   "author": "Codex Quota Desktop Assistant Contributors",
@@ -18,7 +18,7 @@
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
-    "test": "node scripts/test-app-server-session.js && node scripts/test-quota-authentication.js && node scripts/test-first-run-initialization.js && node scripts/test-initialization-controller.js && node scripts/test-initialization-window.js && node scripts/test-quota-sources.js && node scripts/test-quota-display.js && node scripts/test-quota-history.js && node scripts/test-sticky-menu.js && node scripts/test-settings-window.js && node scripts/test-calendar-ranges.js && node scripts/test-color-mode.js && node scripts/test-model-usage.js && node scripts/test-model-pricing.js && node scripts/test-token-consistency.js && node scripts/test-corner-resize.js && node scripts/test-history-persistence.js && node scripts/test-settings-stability.js && node scripts/test-adaptive-metrics.js && node scripts/test-magnetic-docking.js && node scripts/test-update-service.js && node scripts/test-product-name.js",
+    "test": "node scripts/test-app-server-session.js && node scripts/test-quota-authentication.js && node scripts/test-first-run-initialization.js && node scripts/test-initialization-controller.js && node scripts/test-initialization-window.js && node scripts/test-quota-sources.js && node scripts/test-quota-display.js && node scripts/test-quota-history.js && node scripts/test-sticky-menu.js && node scripts/test-settings-window.js && node scripts/test-settings-dependencies.js && node scripts/test-calendar-ranges.js && node scripts/test-color-mode.js && node scripts/test-model-usage.js && node scripts/test-model-pricing.js && node scripts/test-token-consistency.js && node scripts/test-corner-resize.js && node scripts/test-history-persistence.js && node scripts/test-settings-stability.js && node scripts/test-adaptive-metrics.js && node scripts/test-magnetic-docking.js && node scripts/test-update-service.js && node scripts/test-product-name.js",
     "build": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win nsis",
     "release": "npm run build",
     "build:dir": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --dir"
@@ -48,13 +48,13 @@
       ]
     },
     "nsis": {
-      "artifactName": "Codex-Quota-Desktop-Assistant-1.1.1-Windows-x64-Setup.exe",
+      "artifactName": "Codex-Quota-Desktop-Assistant-1.1.2-Windows-x64-Setup.exe",
       "oneClick": true,
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Codex 额度桌面助手",
-      "uninstallDisplayName": "Codex 额度桌面助手 1.1.1",
+      "uninstallDisplayName": "Codex 额度桌面助手 1.1.2",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": false
     }

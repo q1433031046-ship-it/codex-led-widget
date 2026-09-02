@@ -46,7 +46,7 @@ async function testHandshakeOrder() {
   await session.request("account/read", { refreshToken: true });
   assert.deepEqual(sent.map((message) => message.method), ["initialize", "initialized", "account/read"]);
   assert.equal(sent[0].params.clientInfo.name, "codex-led-widget");
-  assert.equal(sent[0].params.clientInfo.version, "1.1.1");
+  assert.equal(sent[0].params.clientInfo.version, "1.1.2");
   assert.deepEqual(sent[2].params, { refreshToken: true });
   session.close();
   assert.equal(child.killed, true);
@@ -68,6 +68,23 @@ async function testNotificationWaiter() {
   child.stdout.write(`${JSON.stringify({ method: "account/login/completed", params: { loginId: "other", success: true } })}\n`);
   child.stdout.write(`${JSON.stringify({ method: "account/login/completed", params: { loginId: "login-1", success: true } })}\n`);
   assert.deepEqual(await waiting, { loginId: "login-1", success: true });
+  session.close();
+}
+
+async function testEarlyNotificationReplay() {
+  const child = createFakeChild((message, process) => {
+    if (message.id) {
+      queueMicrotask(() => process.stdout.write(`${JSON.stringify({ id: message.id, result: {} })}\n`));
+    }
+  });
+  const session = createAppServerSession({ spawnProcess: () => child, timeoutMs: 100 });
+  await session.start();
+  // The browser may finish before the renderer has installed its waiter.
+  child.stdout.write(`${JSON.stringify({ method: "account/login/completed", params: { loginId: "early", success: true } })}\n`);
+  assert.deepEqual(
+    await session.waitForNotification("account/login/completed", (params) => params.loginId === "early", 100),
+    { loginId: "early", success: true },
+  );
   session.close();
 }
 
@@ -107,6 +124,7 @@ function testSanitization() {
 (async () => {
   await testHandshakeOrder();
   await testNotificationWaiter();
+  await testEarlyNotificationReplay();
   await testTimeoutAndClose();
   testSanitization();
   console.log("app-server-session-tests-passed");

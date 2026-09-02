@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Codex 额度桌面助手 · 设置</title>
     <link rel="stylesheet" href="./settings.css" />
+    <script src="./settings-dependencies.js"></script>
   </head>
   <body>
     <main class="settings-shell">
@@ -52,8 +53,9 @@
               <div id="otherWindows" class="other-windows" hidden></div>
             </article>
 
+            <div class="settings-group-heading"><strong>悬浮窗内容</strong><span>先选数据，再决定仪表和两张额度卡显示什么。</span></div>
             <div class="settings-grid">
-              <label class="settings-card compact">
+              <label class="settings-card compact" data-depends-on="meter">
                 <span class="field-copy"><strong>仪表数据</strong><small>所选周期不可用时会自动回退。</small></span>
                 <select id="meterSourceSelect" data-pref="meterSource">
                   <option value="primary">5 小时额度</option>
@@ -64,15 +66,15 @@
                 <span class="field-copy"><strong>显示能量仪表</strong><small>在悬浮窗左侧显示剩余额度。</small></span>
                 <input type="checkbox" data-pref="meterEnabled" />
               </label>
-              <label class="settings-card toggle-row" data-window-control="primary">
+              <label class="settings-card toggle-row" data-window-control="primary" data-depends-on="cards">
                 <span class="field-copy"><strong>5 小时额度卡</strong><small class="availability-reason" data-window="primary"></small></span>
                 <input id="primaryCardToggle" type="checkbox" data-pref="primaryCardEnabled" />
               </label>
-              <label class="settings-card toggle-row" data-window-control="secondary">
+              <label class="settings-card toggle-row" data-window-control="secondary" data-depends-on="cards">
                 <span class="field-copy"><strong>7 天额度卡</strong><small class="availability-reason" data-window="secondary"></small></span>
                 <input id="secondaryCardToggle" type="checkbox" data-pref="secondaryCardEnabled" />
               </label>
-              <details class="window-detail-group">
+              <details class="window-detail-group" data-depends-on="primaryCard">
                 <summary>5 小时显示细节 <small>当前来源不可用时保留设置</small></summary>
                 <div class="settings-grid nested-grid">
                   <label class="settings-card toggle-row" data-window-control="primary"><span class="field-copy"><strong>当前数值</strong><small>显示本轮已用或剩余。</small></span><input type="checkbox" data-pref="primaryShowUsed" /></label>
@@ -82,7 +84,7 @@
                   <label class="settings-card toggle-row" data-window-control="primary"><span class="field-copy"><strong>重置倒计时</strong><small>显示距离重置的时间。</small></span><input type="checkbox" data-pref="primaryShowCountdown" /></label>
                 </div>
               </details>
-              <details class="window-detail-group" open>
+              <details class="window-detail-group" open data-depends-on="secondaryCard">
                 <summary>7 天显示细节 <small>当前套餐的主要额度周期</small></summary>
                 <div class="settings-grid nested-grid">
                   <label class="settings-card toggle-row" data-window-control="secondary"><span class="field-copy"><strong>本周已用</strong><small>显示当前周期消耗。</small></span><input type="checkbox" data-pref="secondaryShowUsed" /></label>
@@ -98,6 +100,7 @@
             <div class="section-heading">
               <div><span class="eyebrow">WIDGET BEHAVIOR</span><h1>窗口与卡片</h1></div>
             </div>
+            <div class="settings-group-heading"><strong>窗口行为与仪表外观</strong><span>总开关只控制生效范围，已保存的子选项会保留。</span></div>
             <div class="settings-grid">
               <label class="settings-card toggle-row">
                 <span class="field-copy"><strong>悬浮窗置顶</strong><small>保持在其他窗口上方。</small></span>
@@ -111,15 +114,15 @@
                 <span class="field-copy"><strong>显示卡片区</strong><small>总开关，不改变各卡片勾选状态。</small></span>
                 <input type="checkbox" data-pref="cardsMasterEnabled" />
               </label>
-              <label class="settings-card compact">
+              <label class="settings-card compact" data-depends-on="meter">
                 <span class="field-copy"><strong>仪表样式</strong><small>圆球或电池。</small></span>
                 <select data-pref="meterStyle"><option value="circle">圆球</option><option value="battery">电池</option></select>
               </label>
-              <label class="settings-card compact">
+              <label class="settings-card compact" data-depends-on="batteryMeter">
                 <span class="field-copy"><strong>电池方向</strong><small>仅电池样式生效。</small></span>
                 <select data-pref="batteryOrientation"><option value="horizontal">横向</option><option value="vertical">竖向</option></select>
               </label>
-              <label class="settings-card compact">
+              <label class="settings-card compact" data-depends-on="magneticMeter">
                 <span class="field-copy"><strong>仪表位置</strong><small>磁吸时可自动跟随边缘。</small></span>
                 <select data-pref="meterSideMode"><option value="auto">自动</option><option value="left">左侧</option><option value="right">右侧</option></select>
               </label>
@@ -127,11 +130,12 @@
                 <span class="field-copy"><strong>颜色随额度变化</strong><small>额度降低时逐步切换为警示色。</small></span>
                 <input type="checkbox" data-pref="adaptiveColorEnabled" />
               </label>
-              <label class="settings-card compact">
+              <label class="settings-card compact" data-depends-on="adaptiveColor">
                 <span class="field-copy"><strong>颜色联动</strong><small>统一颜色或各模块独立。</small></span>
                 <select data-pref="colorMode"><option value="unified">统一</option><option value="independent">独立</option></select>
               </label>
             </div>
+            <div class="settings-group-heading"><strong>布局恢复</strong><span>只恢复尺寸与比例，不会关闭任何显示项目。</span></div>
             <article class="settings-card reset-card">
               <span class="field-copy"><strong>恢复布局尺寸</strong><small>只重置尺寸，不改变显示项目。</small></span>
               <div class="button-row">
@@ -147,19 +151,21 @@
               <div><span class="eyebrow">HISTORY & COST</span><h1>统计与费用</h1></div>
               <button id="openStatsButton" type="button" class="secondary-button">打开统计页</button>
             </div>
+            <div class="settings-group-heading"><strong>统计展示</strong><span>关闭统计总开关后，相关图表不会占用悬浮窗空间。</span></div>
             <div class="settings-grid">
               <label class="settings-card toggle-row"><span class="field-copy"><strong>消耗统计卡</strong><small>在悬浮窗显示累计消耗。</small></span><input type="checkbox" data-pref="quotaStatsPanelEnabled" /></label>
-              <label class="settings-card toggle-row" data-window-control="primary"><span class="field-copy"><strong>5 小时消耗图</strong><small class="availability-reason" data-window="primary"></small></span><input type="checkbox" data-pref="primaryChartEnabled" /></label>
-              <label class="settings-card toggle-row" data-window-control="secondary"><span class="field-copy"><strong>7 天消耗图</strong><small class="availability-reason" data-window="secondary"></small></span><input type="checkbox" data-pref="secondaryChartEnabled" /></label>
+              <label class="settings-card toggle-row" data-window-control="primary" data-depends-on="statsPanel"><span class="field-copy"><strong>5 小时消耗图</strong><small class="availability-reason" data-window="primary"></small></span><input type="checkbox" data-pref="primaryChartEnabled" /></label>
+              <label class="settings-card toggle-row" data-window-control="secondary" data-depends-on="statsPanel"><span class="field-copy"><strong>7 天消耗图</strong><small class="availability-reason" data-window="secondary"></small></span><input type="checkbox" data-pref="secondaryChartEnabled" /></label>
               <label class="settings-card toggle-row"><span class="field-copy"><strong>消耗日历</strong><small>在统计页显示日历热力图。</small></span><input type="checkbox" data-pref="calendarEnabled" /></label>
+              <div class="settings-group-heading inline-group-heading"><strong>Token 与费用</strong><span>子项目可独立保留，关闭总开关时仅暂时停用。</span></div>
               <label class="settings-card toggle-row"><span class="field-copy"><strong>Token 费用卡</strong><small>显示本机可归属的 Token 统计。</small></span><input type="checkbox" data-pref="tokenPanelEnabled" /></label>
-              <label class="settings-card toggle-row"><span class="field-copy"><strong>今日 Token</strong><small>显示今天的本地统计。</small></span><input type="checkbox" data-pref="tokenShowToday" /></label>
-              <label class="settings-card toggle-row"><span class="field-copy"><strong>本周 Token</strong><small>显示本周累计。</small></span><input type="checkbox" data-pref="tokenShowWeek" /></label>
-              <label class="settings-card toggle-row"><span class="field-copy"><strong>累计 Token</strong><small>显示追踪以来累计。</small></span><input type="checkbox" data-pref="tokenShowLifetime" /></label>
-              <label class="settings-card toggle-row"><span class="field-copy"><strong>美元估算</strong><small>按官方 API 单价进行等值估算。</small></span><input type="checkbox" data-pref="tokenShowUsd" /></label>
-              <label class="settings-card toggle-row"><span class="field-copy"><strong>人民币估算</strong><small>使用缓存汇率换算。</small></span><input type="checkbox" data-pref="tokenShowCny" /></label>
-              <label class="settings-card compact"><span class="field-copy"><strong>日历计量单位</strong><small>额度、Token 或费用。</small></span><select data-pref="calendarUnit"><option value="quota">额度 %</option><option value="tokens">Token</option><option value="usd">美元</option><option value="cny">人民币</option></select></label>
-              <label class="settings-card compact"><span class="field-copy"><strong>日历范围</strong><small>月视图或年视图。</small></span><select data-pref="calendarRange"><option value="month">月</option><option value="year">年</option></select></label>
+              <label class="settings-card toggle-row" data-depends-on="tokens"><span class="field-copy"><strong>今日 Token</strong><small>显示今天的本地统计。</small></span><input type="checkbox" data-pref="tokenShowToday" /></label>
+              <label class="settings-card toggle-row" data-depends-on="tokens"><span class="field-copy"><strong>本周 Token</strong><small>显示本周累计。</small></span><input type="checkbox" data-pref="tokenShowWeek" /></label>
+              <label class="settings-card toggle-row" data-depends-on="tokens"><span class="field-copy"><strong>累计 Token</strong><small>显示追踪以来累计。</small></span><input type="checkbox" data-pref="tokenShowLifetime" /></label>
+              <label class="settings-card toggle-row" data-depends-on="tokens"><span class="field-copy"><strong>美元估算</strong><small>按官方 API 单价进行等值估算。</small></span><input type="checkbox" data-pref="tokenShowUsd" /></label>
+              <label class="settings-card toggle-row" data-depends-on="tokens"><span class="field-copy"><strong>人民币估算</strong><small>使用缓存汇率换算。</small></span><input type="checkbox" data-pref="tokenShowCny" /></label>
+              <label class="settings-card compact" data-depends-on="calendar"><span class="field-copy"><strong>日历计量单位</strong><small>额度、Token 或费用。</small></span><select data-pref="calendarUnit"><option value="quota">额度 %</option><option value="tokens">Token</option><option value="usd">美元</option><option value="cny">人民币</option></select></label>
+              <label class="settings-card compact" data-depends-on="calendar"><span class="field-copy"><strong>日历范围</strong><small>月视图或年视图。</small></span><select data-pref="calendarRange"><option value="month">月</option><option value="year">年</option></select></label>
             </div>
           </section>
 
@@ -187,7 +193,7 @@
         const previewListeners = { state: [], navigate: [], language: [] };
         const previewNow = new Date().toISOString();
         let previewState = {
-          app: { name: "Codex 额度桌面助手", version: "1.1.0-preview" },
+          app: { name: "Codex 额度桌面助手", version: "1.1.2-preview" },
           preferences: {
             preferenceVersion: 3, quotaSourceId: "codex", alwaysOnTop: true,
             primaryCardEnabled: true, secondaryCardEnabled: true, cardsMasterEnabled: true,

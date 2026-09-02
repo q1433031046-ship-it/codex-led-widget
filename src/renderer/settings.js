@@ -109,7 +109,8 @@ function renderAvailability() {
     const windowKey = container.dataset.windowControl;
     const available = availability[windowKey];
     const input = container.querySelector("input, select");
-    if (input) input.disabled = !available;
+    container.dataset.availabilityDisabled = String(!available);
+    if (input) input.dataset.availabilityDisabled = String(!available);
     container.classList.toggle("disabled", !available);
   }
   for (const reason of document.querySelectorAll(".availability-reason[data-window]")) {
@@ -119,6 +120,29 @@ function renderAvailability() {
   }
   for (const option of elements.meterSourceSelect.options) {
     option.disabled = option.value === "primary" ? !availability.primary : !availability.secondary;
+  }
+  renderDependencies(availability);
+}
+
+function renderDependencies(availability) {
+  const preferences = state?.preferences || {};
+  const dependencyApi = window.codexSettingsDependencies;
+  const dependencyState = dependencyApi
+    ? dependencyApi.getDependencyState(preferences, availability)
+    : {};
+  for (const container of document.querySelectorAll("[data-depends-on]")) {
+    const key = container.dataset.dependsOn;
+    const unavailable = container.dataset.availabilityDisabled === "true";
+    const enabled = (dependencyApi ? dependencyState[key] !== false : true) && !unavailable;
+    container.classList.toggle("disabled", !enabled);
+    container.setAttribute("aria-disabled", String(!enabled));
+    const controls = container.matches("input, select")
+      ? [container]
+      : [...container.querySelectorAll("input, select")];
+    for (const control of controls) {
+      const controlUnavailable = control.dataset.availabilityDisabled === "true";
+      control.disabled = !enabled || controlUnavailable;
+    }
   }
 }
 
@@ -153,7 +177,7 @@ function render() {
 
 async function updatePreference(control) {
   const key = control.dataset.pref;
-  if (!key || !state) return;
+  if (!key || !state || control.disabled) return;
   const previous = state.preferences[key];
   const value = control.type === "checkbox" ? control.checked : control.value;
   state = { ...state, preferences: { ...state.preferences, [key]: value } };

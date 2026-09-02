@@ -4,6 +4,67 @@ function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
 }
 
+function validRect(rect) {
+  return Number.isFinite(Number(rect?.x)) && Number.isFinite(Number(rect?.y)) &&
+    Number.isFinite(Number(rect?.width)) && Number.isFinite(Number(rect?.height)) &&
+    Number(rect.width) > 0 && Number(rect.height) > 0;
+}
+
+function intersectionArea(left, right) {
+  if (!validRect(left) || !validRect(right)) return 0;
+  const width = Math.max(0, Math.min(left.x + left.width, right.x + right.width) - Math.max(left.x, right.x));
+  const height = Math.max(0, Math.min(left.y + left.height, right.y + right.height) - Math.max(left.y, right.y));
+  return width * height;
+}
+
+function constrainBoundsToWorkArea(bounds, workArea) {
+  if (!validRect(bounds) || !validRect(workArea)) return { ...bounds };
+  const areaX = Math.round(Number(workArea.x));
+  const areaY = Math.round(Number(workArea.y));
+  const areaWidth = Math.max(1, Math.round(Number(workArea.width)));
+  const areaHeight = Math.max(1, Math.round(Number(workArea.height)));
+  const width = Math.min(areaWidth, Math.max(1, Math.round(Number(bounds.width))));
+  const height = Math.min(areaHeight, Math.max(1, Math.round(Number(bounds.height))));
+  return {
+    x: Math.round(clamp(Number(bounds.x), areaX, areaX + areaWidth - width)),
+    y: Math.round(clamp(Number(bounds.y), areaY, areaY + areaHeight - height)),
+    width,
+    height
+  };
+}
+
+function resolveDisplayForBounds(displays, bounds, rememberedId = null) {
+  const candidates = Array.isArray(displays) ? displays.filter((display) => validRect(display?.bounds)) : [];
+  if (!candidates.length) return null;
+  const remembered = candidates.find((display) => String(display.id) === String(rememberedId));
+  if (!validRect(bounds)) return remembered || candidates[0];
+
+  const center = { x: Number(bounds.x) + Number(bounds.width) / 2, y: Number(bounds.y) + Number(bounds.height) / 2 };
+  const centered = candidates.find((display) =>
+    center.x >= display.bounds.x && center.x <= display.bounds.x + display.bounds.width &&
+    center.y >= display.bounds.y && center.y <= display.bounds.y + display.bounds.height
+  );
+  if (centered) return centered;
+
+  const ranked = candidates
+    .map((display, index) => ({
+      display,
+      index,
+      area: intersectionArea(bounds, display.bounds),
+      remembered: display === remembered ? 1 : 0,
+      distance: Math.hypot(
+        center.x - (display.bounds.x + display.bounds.width / 2),
+        center.y - (display.bounds.y + display.bounds.height / 2)
+      )
+    }))
+    .sort((left, right) => {
+      if (right.area !== left.area) return right.area - left.area;
+      if (left.area > 0 && right.area > 0 && right.remembered !== left.remembered) return right.remembered - left.remembered;
+      return left.distance - right.distance || right.remembered - left.remembered || left.index - right.index;
+    });
+  return ranked[0].display;
+}
+
 function isMagnetEdge(value) {
   return MAGNET_EDGES.includes(value);
 }
@@ -34,15 +95,16 @@ function chooseSnapEdge(bounds, workArea, options = {}) {
 }
 
 function snapExpandedBounds(bounds, workArea, edge) {
-  const width = Math.max(1, Math.round(bounds.width));
-  const height = Math.max(1, Math.round(bounds.height));
+  const constrained = constrainBoundsToWorkArea(bounds, workArea);
+  const width = constrained.width;
+  const height = constrained.height;
   const minX = workArea.x;
   const maxX = workArea.x + Math.max(0, workArea.width - width);
   const minY = workArea.y;
   const maxY = workArea.y + Math.max(0, workArea.height - height);
   const next = {
-    x: Math.round(clamp(bounds.x, minX, maxX)),
-    y: Math.round(clamp(bounds.y, minY, maxY)),
+    x: Math.round(clamp(constrained.x, minX, maxX)),
+    y: Math.round(clamp(constrained.y, minY, maxY)),
     width,
     height
   };
@@ -115,5 +177,8 @@ module.exports = {
   isMagnetEdge,
   meterSideForEdge,
   pointInRect,
+  constrainBoundsToWorkArea,
+  intersectionArea,
+  resolveDisplayForBounds,
   snapExpandedBounds
 };

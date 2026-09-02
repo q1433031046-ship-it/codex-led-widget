@@ -5,8 +5,10 @@ const {
   activationRect,
   chooseSnapEdge,
   collapsedBounds,
+  constrainBoundsToWorkArea,
   meterSideForEdge,
   pointInRect,
+  resolveDisplayForBounds,
   snapExpandedBounds
 } = require("../src/main/magnet-controller");
 
@@ -47,6 +49,23 @@ const secondaryWorkArea = { x: -1280, y: 0, width: 1280, height: 984 };
 const secondaryBounds = { x: -1274, y: 200, width: 240, height: 120 };
 assert.equal(chooseSnapEdge(secondaryBounds, secondaryWorkArea, { threshold: 30 }), "left");
 assert.equal(snapExpandedBounds(secondaryBounds, secondaryWorkArea, "left").x, -1280);
+
+const displays = [
+  { id: 1, bounds: { x: 0, y: 0, width: 1920, height: 1080 }, workArea: { x: 0, y: 0, width: 1920, height: 1040 } },
+  { id: 2, bounds: { x: 1920, y: -220, width: 2560, height: 1440 }, workArea: { x: 1920, y: -180, width: 2560, height: 1400 } }
+];
+assert.equal(resolveDisplayForBounds(displays, { x: 2500, y: 100, width: 380, height: 220 }, 1).id, 2, "the window center wins over a stale display id");
+assert.equal(resolveDisplayForBounds(displays, { x: 4600, y: 900, width: 300, height: 160 }, 1).id, 2, "nearest display recovers after the saved id becomes stale");
+assert.deepEqual(
+  constrainBoundsToWorkArea({ x: 4300, y: 900, width: 900, height: 900 }, displays[1].workArea),
+  { x: 3580, y: 320, width: 900, height: 900 },
+  "expanded bounds stay inside a negative-coordinate work area"
+);
+assert.deepEqual(
+  constrainBoundsToWorkArea({ x: 1900, y: -300, width: 5000, height: 5000 }, displays[1].workArea),
+  { x: 1920, y: -180, width: 2560, height: 1400 },
+  "oversized windows are reduced to the target work area"
+);
 
 const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main", "main.js"), "utf8");
 const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "renderer", "renderer.js"), "utf8");

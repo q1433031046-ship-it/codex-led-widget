@@ -157,13 +157,17 @@ async function requestAccountDataAttempt(options = {}) {
       if (!login?.loginId || !login?.authUrl) {
         throw new Error("Codex 未返回有效的登录会话。");
       }
-      await Promise.resolve(onLoginUrl(login.authUrl));
-      onPhase("waiting_for_login");
-      const completed = await session.waitForNotification(
+      // Establish the waiter before opening the browser. The hosted login can
+      // complete immediately (for example when the user is already signed in),
+      // and App Server notifications must never be lost in that gap.
+      const completedPromise = session.waitForNotification(
         "account/login/completed",
         (params) => params?.loginId === login.loginId,
         300000
       );
+      await Promise.resolve(onLoginUrl(login.authUrl));
+      onPhase("waiting_for_login");
+      const completed = await completedPromise;
       if (!completed?.success) {
         throw new Error(completed?.error || "Codex 登录未完成。");
       }

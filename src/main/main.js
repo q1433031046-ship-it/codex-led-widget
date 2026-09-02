@@ -27,6 +27,7 @@ const {
   isMagnetEdge,
   meterSideForEdge,
   pointInRect,
+  resolveDisplayForBounds,
   snapExpandedBounds
 } = require("./magnet-controller");
 const PRODUCT_NAME = "Codex 额度桌面助手";
@@ -169,7 +170,7 @@ function hasVisibleWindowArea(bounds) {
   const requiredWidth = Math.min(40, Math.max(1, bounds.width));
   const requiredHeight = Math.min(40, Math.max(1, bounds.height));
   return screen.getAllDisplays().some((display) => {
-    const area = display.bounds;
+    const area = display.workArea || display.bounds;
     const visibleWidth = Math.max(0, Math.min(bounds.x + bounds.width, area.x + area.width) - Math.max(bounds.x, area.x));
     const visibleHeight = Math.max(0, Math.min(bounds.y + bounds.height, area.y + area.height) - Math.max(bounds.y, area.y));
     return visibleWidth >= requiredWidth && visibleHeight >= requiredHeight;
@@ -1121,10 +1122,9 @@ function resolveMeterSide(edge, fallback = "left") {
   return meterSideForEdge(edge, fallback);
 }
 
-function magnetDisplay(bounds = magnetState.expandedBounds || mainWindow?.getBounds()) {
+function magnetDisplay(bounds = mainWindow?.getBounds() || magnetState.expandedBounds) {
   const displays = screen.getAllDisplays();
-  const remembered = displays.find((display) => String(display.id) === String(magnetState.displayId));
-  return remembered || (bounds ? screen.getDisplayMatching(bounds) : screen.getPrimaryDisplay());
+  return resolveDisplayForBounds(displays, bounds, magnetState.displayId) || screen.getPrimaryDisplay();
 }
 
 function magnetRuntimePayload() {
@@ -1249,7 +1249,7 @@ function dockMainWindow(edge, sourceBounds = mainWindow?.getBounds(), options = 
   if (!magnetEnabled() || !isMagnetEdge(edge) || !sourceBounds || !mainWindow || mainWindow.isDestroyed()) return false;
   cancelMagnetRetract();
   stopMagnetAnimation();
-  const display = screen.getDisplayMatching(sourceBounds);
+  const display = magnetDisplay(sourceBounds);
   magnetState.edge = edge;
   magnetState.displayId = display.id;
   magnetState.expandedBounds = snapExpandedBounds(sourceBounds, display.workArea, edge);
@@ -1290,7 +1290,7 @@ function setMagneticEnabled(value) {
   notifyMagnetState();
   const bounds = mainWindow?.getBounds();
   if (bounds) {
-    const display = screen.getDisplayMatching(bounds);
+    const display = magnetDisplay(bounds);
     const edge = chooseSnapEdge(bounds, display.workArea, {
       threshold: MAGNET_SNAP_DISTANCE,
       cornerHysteresis: MAGNET_CORNER_HYSTERESIS,
@@ -1304,7 +1304,7 @@ function setMagneticEnabled(value) {
 function handleMagnetMoveFinished() {
   if (!magnetEnabled() || magnetProgrammaticMove || !mainWindow || mainWindow.isDestroyed()) return;
   const bounds = mainWindow.getBounds();
-  const display = screen.getDisplayMatching(bounds);
+  const display = magnetDisplay(bounds);
   const edge = chooseSnapEdge(bounds, display.workArea, {
     threshold: MAGNET_SNAP_DISTANCE,
     cornerHysteresis: MAGNET_CORNER_HYSTERESIS,
@@ -1358,7 +1358,7 @@ function reanchorMagnetWindow() {
     ensureMainWindowVisible();
     return;
   }
-  const display = magnetDisplay(magnetState.expandedBounds);
+  const display = magnetDisplay(mainWindow?.getBounds() || magnetState.expandedBounds);
   magnetState.displayId = display.id;
   magnetState.expandedBounds = snapExpandedBounds(magnetState.expandedBounds, display.workArea, magnetState.edge);
   if (magnetState.expanded) setMainWindowBoundsProgrammatically(magnetState.expandedBounds);
@@ -1368,6 +1368,15 @@ function reanchorMagnetWindow() {
 
 function createWindow() {
   const savedState = loadWindowState(windowStatePath(), DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE);
+  if (!savedState.hasPosition && isMagnetEdge(savedState.magnetEdge) &&
+      Number.isFinite(savedState.x) && Number.isFinite(savedState.y)) {
+    const rememberedBounds = { x: savedState.x, y: savedState.y, width: savedState.width, height: savedState.height };
+    const display = resolveDisplayForBounds(screen.getAllDisplays(), rememberedBounds, savedState.displayId);
+    if (display) {
+      const recovered = snapExpandedBounds(rememberedBounds, display.workArea, savedState.magnetEdge);
+      Object.assign(savedState, recovered, { hasPosition: true, displayId: display.id });
+    }
+  }
   const windowOptions = {
     width: savedState.width,
     height: savedState.height,
@@ -1795,21 +1804,30 @@ async function setQuotaSourceFromSettings(value) {
   }
 }
 
-function placeWindowBottomRight() {
+function placeWindowBottomRight(preferredDisplay = null) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  const display = screen.getPrimaryDisplay();
-  const { width, height } = mainWindow.getBounds();
-  const { bounds, workArea } = display;
-  const screenBottom = bounds.y + bounds.height;
-  const workBottom = workArea.y + workArea.height;
-  const detectedTaskbarHeight = Math.max(0, screenBottom - workBottom);
-  const reservedBottom = Math.max(96, detectedTaskbarHeight + 20);
-  const safeBottom = Math.min(workBottom, screenBottom - reservedBottom);
+  const currentBounds = mainWindow.getBounds();
+  const display = preferredDisplay || magnetDisplay(currentBounds) || screen.getPrimaryDisplay();
+  const workArea = display.workArea || display.bounds;
+  const width = Math.min(Math.max(MIN_WINDOW_SIZE.width, Math.round(currentBounds.width)), Math.max(1, Math.round(workArea.width)));
+  const height = Math.min(Math.max(MIN_WINDOW_SIZE.height, Math.round(currentBounds.height)), Math.max(1, Math.round(workArea.height)));
+  const right = workArea.x + workArea.width - width;
+  const bottom = workArea.y + workArea.height - height;
   mainWindow.setBounds({
-    x: workArea.x + workArea.width - width - 24,
-    y: safeBottom - height - 12,
+    x: Math.round(Math.max(workArea.x, Math.min(right, workArea.x + workArea.width - width - 24))),
+    y: Math.round(Math.max(workArea.y, Math.min(bottom, workArea.y + workArea.height - height - 12))),
     width,
     height
+  });
+}
+
+function isWithinWorkArea(bounds) {
+  if (!bounds) return false;
+  return screen.getAllDisplays().some((display) => {
+    const area = display.workArea || display.bounds;
+    return bounds.x >= area.x && bounds.y >= area.y &&
+      bounds.x + bounds.width <= area.x + area.width &&
+      bounds.y + bounds.height <= area.y + area.height;
   });
 }
 
@@ -1818,8 +1836,10 @@ function ensureMainWindowVisible() {
     reanchorMagnetWindow();
     return;
   }
-  if (!mainWindow || mainWindow.isDestroyed() || hasVisibleWindowArea(mainWindow.getBounds())) return;
-  placeWindowBottomRight();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const bounds = mainWindow.getBounds();
+  if (hasVisibleWindowArea(bounds) && isWithinWorkArea(bounds)) return;
+  placeWindowBottomRight(magnetDisplay(bounds));
 }
 
 async function createTray() {

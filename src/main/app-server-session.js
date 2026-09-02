@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const DEFAULT_TIMEOUT_MS = 30000;
-const CLIENT_VERSION = "1.1.1";
+const CLIENT_VERSION = "1.1.2";
 
 function findVersionedCodexExecutables(binRoot) {
   try {
@@ -58,6 +58,8 @@ function createAppServerSession(options = {}) {
   const child = spawnProcess(options.codexPath || resolveCodexPath());
   const pending = new Map();
   const waiters = new Set();
+  const recentNotifications = [];
+  const MAX_RECENT_NOTIFICATIONS = 32;
   let stdoutBuffer = "";
   let stderr = "";
   let nextId = 1;
@@ -113,6 +115,9 @@ function createAppServerSession(options = {}) {
     }
 
     if (typeof message.method !== "string") return;
+    const notification = { method: message.method, params: message.params };
+    recentNotifications.push(notification);
+    if (recentNotifications.length > MAX_RECENT_NOTIFICATIONS) recentNotifications.shift();
     for (const waiter of [...waiters]) {
       if (waiter.method !== message.method) continue;
       let matches = false;
@@ -127,6 +132,8 @@ function createAppServerSession(options = {}) {
       if (!matches) continue;
       clearTimeout(waiter.timer);
       waiters.delete(waiter);
+      const bufferedIndex = recentNotifications.indexOf(notification);
+      if (bufferedIndex >= 0) recentNotifications.splice(bufferedIndex, 1);
       waiter.resolve(message.params);
     }
   }
@@ -178,6 +185,19 @@ function createAppServerSession(options = {}) {
 
   function waitForNotification(method, predicate = () => true, waitMs = 300000) {
     if (closed) return Promise.reject(sessionClosedError());
+    for (let index = 0; index < recentNotifications.length; index += 1) {
+      const notification = recentNotifications[index];
+      if (notification.method !== method) continue;
+      let matches = false;
+      try {
+        matches = predicate(notification.params);
+      } catch (error) {
+        return Promise.reject(error);
+      }
+      if (!matches) continue;
+      recentNotifications.splice(index, 1);
+      return Promise.resolve(notification.params);
+    }
     return new Promise((resolve, reject) => {
       const waiter = { method, predicate, resolve, reject, timer: null };
       waiter.timer = setTimeout(() => {
