@@ -32,7 +32,7 @@
 - `ensureAccountProfile(rootPath, account, options) -> { registry, profile, directory, switched, migrated }`
 - `accountScopedFile(directory, filename) -> absolutePath`
 
-- [ ] **Step 1: Write failing identity and migration tests.**
+- [x] **Step 1: Write failing identity and migration tests.**
 
 ```js
 const profile = deriveAccountProfile({ type: "chatgpt", email: " Pro.User@example.com ", planType: "pro" });
@@ -47,21 +47,21 @@ assert.equal(fs.existsSync(path.join(tempRoot, "accounts", second.profile.profil
 assert.equal(fs.existsSync(path.join(tempRoot, "usage-history.json")), true);
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails.**
+- [x] **Step 2: Run the focused test and verify it fails.**
 
 Run: `node scripts/test-account-profile-service.js`
 Expected: FAIL because the service module does not exist.
 
-- [ ] **Step 3: Implement hashing, registry normalization, atomic writes, and idempotent legacy copying.**
+- [x] **Step 3: Implement hashing, registry normalization, atomic writes, and idempotent legacy copying.**
 
 Use `crypto.createHash("sha256").update(`${accountType}:${stableValue}`).digest("hex").slice(0, 24)` for `profileId`; choose `name/displayName/username/email` for the display name; copy only the six account-scoped filenames when the destination is absent.
 
-- [ ] **Step 4: Run the focused test and the full suite.**
+- [x] **Step 4: Run the focused test and the full suite.**
 
 Run: `node scripts/test-account-profile-service.js` and `pnpm test`
 Expected: both PASS.
 
-- [ ] **Step 5: Commit.**
+- [x] **Step 5: Commit.**
 
 ```powershell
 git add src/main/account-profile-service.js scripts/test-account-profile-service.js package.json
@@ -77,17 +77,17 @@ git commit -m "feat: add account profile registry and migration"
 **Interfaces:**
 - `getQuota()` continues returning the existing quota fields and adds `account: { displayName, accountType, planType, profileId }`.
 
-- [ ] **Step 1: Add a fake account response and assertions.**
+- [x] **Step 1: Add a fake account response and assertions.**
 
 Make the fake `account/read` return `{ type: "chatgpt", email: "Pro.User@example.com", planType: "pro" }`; assert `result.account.displayName` and that no `token`, `authUrl`, or raw account ID fields are present.
 
-- [ ] **Step 2: Run `node scripts/test-quota-authentication.js` and observe the expected failure.**
+- [x] **Step 2: Run `node scripts/test-quota-authentication.js` and observe the expected failure.**
 
-- [ ] **Step 3: Normalize account metadata with the account-profile service and return it from `requestAccountData`/`getQuota`.**
+- [x] **Step 3: Normalize account metadata with the account-profile service and return it from `requestAccountData`/`getQuota`.**
 
 Keep the existing `{ rateLimits, accountUsage }` behavior compatible while adding the sanitized account object.
 
-- [ ] **Step 4: Run the focused test and `pnpm test`; commit.**
+- [x] **Step 4: Run the focused test and `pnpm test`; commit.**
 
 ```powershell
 git add src/main/quota-service.js scripts/test-quota-authentication.js
@@ -105,19 +105,19 @@ git commit -m "feat: attach sanitized account metadata to quota refresh"
 - `storagePath(filename) -> path.join(activeProfileDirectory || app.getPath("userData"), filename)`.
 - `activateAccountFromQuota(account, quota) -> profile summary`.
 
-- [ ] **Step 1: Add switching tests with two synthetic accounts.**
+- [x] **Step 1: Add switching tests with two synthetic accounts.**
 
 Create two profiles, write different `usage-history.json` and `display-preferences.json` values, activate A then B then A, and assert each value returns unchanged. Assert root legacy files remain after migration.
 
-- [ ] **Step 2: Implement startup registry loading and account-scoped path helpers.**
+- [x] **Step 2: Implement startup registry loading and account-scoped path helpers.**
 
 Initialize the registry before `loadDisplayPreferences`, `loadUsageHistory`, `loadQuotaStatsLedger`, and `loadQuotaSnapshot`; keep initialization, pricing, and model-usage paths global.
 
-- [ ] **Step 3: Activate/switch after a successful refresh.**
+- [x] **Step 3: Activate/switch after a successful refresh.**
 
 Before switching, persist the current in-memory profile. After switching, reload target preferences/history/ledger/snapshot and reapply the target window state; write the new quota into the target profile and notify all windows.
 
-- [ ] **Step 4: Run focused switching tests and the full suite; commit.**
+- [x] **Step 4: Run focused switching tests and the full suite; commit.**
 
 ```powershell
 node scripts/test-account-switching.js
@@ -139,15 +139,15 @@ git commit -m "feat: isolate main persistence by account profile"
 **Interfaces:**
 - `settingsStatePayload().account -> { active, profiles }` with displayName, accountType, planLabel, lastSeenAt, active only.
 
-- [ ] **Step 1: Add static settings assertions for account fields and no auth fields.**
+- [x] **Step 1: Add static settings assertions for account fields and no auth fields.**
 
-- [ ] **Step 2: Add the current-account and recorded-accounts cards to the About tab.**
+- [x] **Step 2: Add the current-account and recorded-accounts cards to the About tab.**
 
 Use text and list rendering, not `innerHTML`; show “由 Codex 登录状态自动切换，本页不执行登录”。
 
-- [ ] **Step 3: Render account state updates with the existing settings state channel.**
+- [x] **Step 3: Render account state updates with the existing settings state channel.**
 
-- [ ] **Step 4: Run settings tests and full `pnpm test`; commit.**
+- [x] **Step 4: Run settings tests and full `pnpm test`; commit.**
 
 ### Task 5: Document, bump version, package, install, and cold-start verify
 
@@ -158,9 +158,9 @@ Use text and list rendering, not `innerHTML`; show “由 Codex 登录状态自�
 - Modify: `package.json`
 - Modify: `scripts/test-product-name.js`
 
-- [ ] **Step 1: Document account name storage and profile isolation.**
-- [ ] **Step 2: Bump the feature release to `1.2.0` and update the installer artifact/uninstall display names consistently.**
-- [ ] **Step 3: Run `pnpm test`.**
-- [ ] **Step 4: Build with `pnpm exec electron-builder --win nsis --x64 --publish never`.**
-- [ ] **Step 5: Stop only the exact installed executable, silently install, compare `app.asar` SHA-256, and cold-start.**
-- [ ] **Step 6: Verify account registry and snapshot are present without exposing credentials; commit documentation/version changes.**
+- [x] **Step 1: Document account name storage and profile isolation.**
+- [x] **Step 2: Bump the feature release to `1.2.0` and update the installer artifact/uninstall display names consistently.**
+- [x] **Step 3: Run `pnpm test`.**
+- [x] **Step 4: Build with `pnpm exec electron-builder --win nsis --x64 --publish never`.**
+- [x] **Step 5: Stop only the exact installed executable, silently install, compare `app.asar` SHA-256, and cold-start.**
+- [x] **Step 6: Verify account registry and snapshot are present without exposing credentials; commit documentation/version changes.**
