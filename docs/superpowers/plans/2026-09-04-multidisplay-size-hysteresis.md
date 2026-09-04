@@ -84,9 +84,9 @@ Files: `package.json`, `CHANGELOG.md`, `README.md` or `USER_GUIDE.zh-CN.md` only
 
 ## Completion checklist
 
-- [ ] Focused magnetic tests pass, including new scale and hysteresis cases.
-- [ ] Full `pnpm test` passes.
-- [ ] Installed artifact contains the new version and matches the built package hash.
-- [ ] Cold restart preserves account/settings data and repaired window state.
+- [x] Focused magnetic tests pass, including new scale and hysteresis cases.
+- [x] Full `pnpm test` passes.
+- [x] Installed artifact contains the new version and matches the built package hash.
+- [x] Cold restart preserves account/settings data and repaired window state.
 - [ ] Runtime multi-display evidence recorded, with any unavailable physical test explicitly marked pending.
-- [ ] No `git push`, GitHub Release, or remote tag mutation performed.
+- [x] No `git push`, GitHub Release, or remote tag mutation performed.
