@@ -6,6 +6,7 @@ const {
   chooseSnapEdge,
   collapsedBounds,
   collapsedShapeRects,
+  expandedShapeRects,
   constrainBoundsToWorkArea,
   meterSideForEdge,
   normalizeScaleFactor,
@@ -43,6 +44,8 @@ assert.deepEqual(collapsedShapeRects(leftExpanded, "left", { strip: 7 }), [{ x: 
 assert.deepEqual(collapsedShapeRects(rightExpanded, "right", { strip: 7 }), [{ x: 0, y: 0, width: 7, height: 140 }]);
 assert.deepEqual(collapsedShapeRects({ ...base, y: 0 }, "top", { strip: 7 }), [{ x: 0, y: 133, width: 300, height: 7 }]);
 assert.deepEqual(collapsedShapeRects({ ...base, y: 620 }, "bottom", { strip: 7 }), [{ x: 0, y: 0, width: 300, height: 7 }]);
+assert.deepEqual(expandedShapeRects({ x: -313, y: 120, width: 320, height: 180 }, { x: 0, y: 0, width: 1000, height: 760 }), [{ x: 313, y: 0, width: 7, height: 180 }]);
+assert.deepEqual(expandedShapeRects({ x: 40, y: 120, width: 320, height: 180 }, { x: 0, y: 0, width: 1000, height: 760 }), [{ x: 0, y: 0, width: 320, height: 180 }]);
 
 assert.equal(meterSideForEdge("left", "left"), "right");
 assert.equal(meterSideForEdge("right", "right"), "left");
@@ -140,6 +143,7 @@ assert.match(mainSource, /scheduleMagnetMoveFinished/);
 assert.match(mainSource, /preserveDisplay/);
 assert.match(mainSource, /setMainWindowShape/);
 assert.match(mainSource, /collapsedShapeRects/);
+assert.match(mainSource, /expandedShapeRects/);
 assert.match(mainSource, /window:magnetWillExpand/);
 assert.match(rendererSource, /magnetPrewarming/);
 assert.match(preloadSource, /onMagnetWillExpand/);

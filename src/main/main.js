@@ -34,6 +34,7 @@ const {
   chooseSnapEdge,
   collapsedBounds,
   collapsedShapeRects,
+  expandedShapeRects,
   isMagnetEdge,
   meterSideForEdge,
   normalizeScaleFactor,
@@ -1401,7 +1402,7 @@ function setMainWindowShape(mode = magnetState.expanded ? "expanded" : "collapse
       keepMeter: magnetGeometry.keepMeter && ["left", "right"].includes(magnetState.edge),
       sideVisible: magnetGeometry.sideVisible
     })
-    : [{ x: 0, y: 0, width: Math.max(1, Math.round(bounds.width)), height: Math.max(1, Math.round(bounds.height)) }];
+    : expandedShapeRects(bounds, magnetDisplay(bounds)?.workArea);
   if (!rects.length) return false;
   try {
     mainWindow.setShape(rects);

@@ -210,6 +210,27 @@ function collapsedShapeRects(bounds, edge, options = {}) {
   return [{ x: 0, y: 0, width, height: strip }];
 }
 
+function expandedShapeRects(bounds, clipBounds) {
+  if (!validRect(bounds)) return [];
+  const left = Number.isFinite(clipBounds?.x) ? Math.max(bounds.x, clipBounds.x) : bounds.x;
+  const top = Number.isFinite(clipBounds?.y) ? Math.max(bounds.y, clipBounds.y) : bounds.y;
+  const right = Number.isFinite(clipBounds?.width)
+    ? Math.min(bounds.x + bounds.width, clipBounds.x + Math.max(0, clipBounds.width))
+    : bounds.x + bounds.width;
+  const bottom = Number.isFinite(clipBounds?.height)
+    ? Math.min(bounds.y + bounds.height, clipBounds.y + Math.max(0, clipBounds.height))
+    : bounds.y + bounds.height;
+  const width = Math.max(0, Math.round(right - left));
+  const height = Math.max(0, Math.round(bottom - top));
+  if (!width || !height) return [];
+  return [{
+    x: Math.round(left - bounds.x),
+    y: Math.round(top - bounds.y),
+    width,
+    height
+  }];
+}
+
 function activationRect(expandedBounds, workArea, edge, options = {}) {
   const strip = Math.max(2, Math.round(Number(options.strip) || 7));
   const margin = Math.max(0, Math.round(Number(options.margin) || 6));
@@ -251,6 +272,7 @@ module.exports = {
   chooseSnapEdge,
   collapsedBounds,
   collapsedShapeRects,
+  expandedShapeRects,
   isMagnetEdge,
   meterSideForEdge,
   pointInRect,

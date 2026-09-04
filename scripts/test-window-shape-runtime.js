@@ -5,6 +5,7 @@ const { app, BrowserWindow, screen } = require("electron");
 const {
   collapsedBounds,
   collapsedShapeRects,
+  expandedShapeRects,
   snapExpandedBounds
 } = require("../src/main/magnet-controller");
 
@@ -39,6 +40,9 @@ app.whenReady().then(() => {
       window.setShape(shape);
       assert.equal(shape.length, 1);
       assert.ok(shape[0].width > 0 && shape[0].height > 0);
+      const preAnimationShape = expandedShapeRects(collapsed, display.workArea);
+      assert.equal(preAnimationShape.length, 1);
+      assert.ok(preAnimationShape[0].width > 0 && preAnimationShape[0].height > 0);
       window.setBounds(docked);
       window.setShape([{ x: 0, y: 0, width: docked.width, height: docked.height }]);
       checks.push({ displayId: String(display.id), edge, collapsed, shape: shape[0] });
