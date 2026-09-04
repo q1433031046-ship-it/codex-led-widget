@@ -6,6 +6,7 @@ const {
   loadHistoryData,
   recordQuotaSnapshot,
   projectHistoryForSource,
+  projectHistoryArchiveForSource,
 } = require("../src/main/quota-history-service");
 
 const legacyPrimary = [{ at: 1, usedPercent: 10, resetsAt: "legacy-short" }];
@@ -15,6 +16,13 @@ assert.equal(migrated.schemaVersion, HISTORY_SCHEMA_VERSION);
 assert.deepEqual(migrated.series, {});
 assert.deepEqual(migrated.legacy.primary, legacyPrimary);
 assert.deepEqual(migrated.legacy.secondary, legacySecondary);
+const legacyProjection = projectHistoryForSource(migrated, {
+  id: "codex",
+  primary: { windowDurationMins: 300 },
+  secondary: { windowDurationMins: 10080 }
+});
+assert.equal(legacyProjection.primary.length, 1, "legacy short-term records remain visible");
+assert.equal(legacyProjection.secondary.length, 1, "legacy weekly records remain visible");
 assert.equal(historySeriesKey("codex", 10080), "codex:10080");
 assert.equal(historySeriesKey("codex_bengalfox", 300), "codex_bengalfox:300");
 
@@ -64,6 +72,17 @@ assert.equal(codexProjection.secondary.length, 1);
 const sparkProjection = projectHistoryForSource(later.history, quota.sources[1]);
 assert.equal(sparkProjection.primary.length, 2);
 assert.equal(sparkProjection.secondary.length, 1);
+const archivedSpark = projectHistoryArchiveForSource(later.history, quota.sources[1]);
+assert.equal(archivedSpark.all.length, 3, "archive projection keeps all reset cycles for the source");
+assert.equal(archivedSpark.primary.length, 2);
+assert.equal(archivedSpark.secondary.length, 1);
+const nextCycle = JSON.parse(JSON.stringify(laterQuota));
+nextCycle.sources[1].primary.resetsAt = "2026-08-30T15:00:00.000Z";
+nextCycle.sources[1].primary.usedPercent = 4;
+nextCycle.sources[1].primary.remainingPercent = 96;
+const afterReset = recordQuotaSnapshot(later.history, nextCycle, { now: 1_200_000 });
+const afterResetArchive = projectHistoryArchiveForSource(afterReset.history, nextCycle.sources[1]);
+assert.equal(afterResetArchive.primary.length, 3, "a new reset cycle appends without hiding prior cycles");
 
 const reloaded = loadHistoryData({
   schemaVersion: HISTORY_SCHEMA_VERSION,

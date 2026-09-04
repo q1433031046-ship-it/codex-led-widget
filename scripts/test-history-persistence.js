@@ -8,6 +8,7 @@ const historyService = fs.readFileSync(path.join(root, "src", "main", "quota-his
 assert.match(source, /loadHistoryData\(saved\)/);
 assert.match(source, /recordQuotaSnapshot\(usageHistory, quota\)/);
 assert.match(source, /projectHistoryForSource\(usageHistory, payload\)/);
+assert.match(source, /projectHistoryArchiveForSource\(usageHistory, payload\)/);
 assert.match(source, /usage-history\.json/);
 assert.match(source, /function scopedUserDataPath\(filename\)/);
 assert.match(source, /function activateAccountProfile\(account\)/);
@@ -15,5 +16,6 @@ assert.match(source, /ensureAccountProfile\(app\.getPath\("userData"\), account\
 assert.match(historyService, /HISTORY_SCHEMA_VERSION\s*=\s*2/);
 assert.match(historyService, /400 \* 24 \* 60 \* 60 \* 1000/);
 assert.match(historyService, /slice\(-MAX_SERIES_POINTS\)/);
+assert.match(historyService, /function projectHistoryArchiveForSource/);
 assert.doesNotMatch(historyService, /key === "primary" \? 300/);
 console.log("history-persistence-tests-passed");

@@ -136,6 +136,37 @@ h2 { margin: 0 0 clamp(8px, 2vh, 13px); color: rgba(241,245,249,.92); font-size:
 
 .token-stat small { min-height: 1em; overflow: hidden; color: var(--accent); font-size: clamp(9px, 1.6vw, 11px); line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
 
+.quota-history-list {
+  display: grid;
+  max-height: 270px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 7px;
+  overflow: auto;
+  padding: 1px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-border) transparent;
+}
+
+.quota-history-item {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.025));
+  font-variant-numeric: tabular-nums;
+}
+
+.quota-history-item strong,
+.quota-history-item span,
+.quota-history-item small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quota-history-item strong { color: rgba(248,250,252,.94); font-size: 11px; }
+.quota-history-item span { color: var(--muted); font-size: 9px; }
+.quota-history-item small { grid-column: 1 / -1; color: var(--accent); font-size: 9px; }
+.quota-history-empty { padding: 14px; color: var(--muted); font-size: 10px; text-align: center; }
+
 .calendar-section { position: relative; }
 .calendar-heading { align-items: center; }
 .calendar-heading > div:first-child { min-width: 0; }

@@ -37,6 +37,10 @@ const elements = {
   secondaryWindowLabel: document.getElementById("secondaryWindowLabel"),
   secondaryWindowValue: document.getElementById("secondaryWindowValue"),
   secondaryWindowBar: document.getElementById("secondaryWindowBar"),
+  quotaHistorySection: document.getElementById("quotaHistorySection"),
+  quotaHistoryHeading: document.getElementById("quotaHistoryHeading"),
+  quotaHistorySummary: document.getElementById("quotaHistorySummary"),
+  quotaHistoryList: document.getElementById("quotaHistoryList"),
   tokenHeading: document.getElementById("tokenHeading"),
   todayTokenCard: document.getElementById("todayTokenCard"),
   weekTokenCard: document.getElementById("weekTokenCard"),
@@ -85,6 +89,7 @@ const copy = {
     calendar: "消耗日历", monthView: "月视图", monthSingle: "单月", monthMulti: "多月", yearView: "年视图", yearMonths: "12个月", yearDays: "全年每日", hover: "悬停查看当前消耗", less: "少", more: "多", recordedDays: "个有记录日", recordedMonths: "个月有消耗",
     modelUsage: "按模型消耗", model: "模型", tracked: "已记录累计", apiCost: "API 等值费用", priceCurrent: "官方价格已更新", priceStale: "部分价格使用缓存", pricePending: "部分模型价格待更新", priceManual: "使用本机手动价格", noModels: "尚无可归属到模型的记录", coverage: "模型明细统计始于", partialCost: "未定价模型未计入",
     pricingSettings: "模型与价格设置", pricingHint: "单价单位：美元 / 100万 Token", rescanModels: "重新扫描模型", refreshOfficial: "刷新官方价格", saveManual: "保存手动价格", restoreOfficial: "恢复官方", manualNotice: "手动价格会保存在本机；恢复官方后才会继续自动更新该模型。", pricingReady: "可以修改后保存", pricingBusy: "正在更新…", modelsRefreshed: "模型记录已重新扫描", pricesRefreshed: "官方价格已刷新", manualSaved: "手动价格已保存", officialRestored: "已恢复官方价格", priceInvalid: "请完整填写四项非负价格", statusCurrent: "官方", statusStale: "缓存", statusManual: "手动", statusUnavailable: "待定价", inputPrice: "输入", cachedPrice: "缓存输入", writePrice: "缓存写入", outputPrice: "输出",
+    quotaHistory: "额度周期历史", quotaHistorySummary: "已保留 {count} 个周期 · 最近显示 {visible} 个", quotaHistoryEmpty: "暂时没有可回看的额度周期", quotaHistorySamples: "{samples} 次记录 · 峰值已用 {peak}% · 最后记录 {last}",
     units: { quota: "总额度 %", tokens: "Token", usd: "美元 $", cny: "人民币 ¥" }, weekdays: ["一", "", "三", "", "五", "", "日"]
   },
   en: {
@@ -95,6 +100,7 @@ const copy = {
     calendar: "Usage calendar", monthView: "Month view", monthSingle: "Single", monthMulti: "Multi-month", yearView: "Year view", yearMonths: "12 months", yearDays: "Daily", hover: "Hover to see usage", less: "Less", more: "More", recordedDays: "recorded days", recordedMonths: "months with usage",
     modelUsage: "Usage by model", model: "Model", tracked: "Tracked total", apiCost: "API-equivalent cost", priceCurrent: "Official prices updated", priceStale: "Some cached prices", pricePending: "Some model prices pending", priceManual: "Local manual prices in use", noModels: "No model-attributed usage yet", coverage: "Model tracking since", partialCost: "Unpriced models excluded",
     pricingSettings: "Model & price settings", pricingHint: "Rates are USD per 1M tokens", rescanModels: "Rescan models", refreshOfficial: "Refresh official prices", saveManual: "Save manual rates", restoreOfficial: "Use official", manualNotice: "Manual rates stay on this computer. Restore official pricing to resume automatic updates for that model.", pricingReady: "Edit a rate and save", pricingBusy: "Updating…", modelsRefreshed: "Model records rescanned", pricesRefreshed: "Official prices refreshed", manualSaved: "Manual prices saved", officialRestored: "Official pricing restored", priceInvalid: "Enter all four non-negative rates", statusCurrent: "Official", statusStale: "Cached", statusManual: "Manual", statusUnavailable: "Unpriced", inputPrice: "Input", cachedPrice: "Cached input", writePrice: "Cache write", outputPrice: "Output",
+    quotaHistory: "Quota cycle history", quotaHistorySummary: "{count} cycles retained · showing {visible}", quotaHistoryEmpty: "No quota cycles recorded yet", quotaHistorySamples: "{samples} samples · peak used {peak}% · last sample {last}",
     units: { quota: "Total quota %", tokens: "Token", usd: "USD $", cny: "CNY ¥" }, weekdays: ["M", "", "W", "", "F", "", "S"]
   }
 };
@@ -607,6 +613,73 @@ function renderCalendar() {
     : period.cursor.getFullYear() >= today.getFullYear();
 }
 
+function historyDurationLabel(duration) {
+  const minutes = Number(duration);
+  if (minutes === 300) return t().primary;
+  if (minutes === 10080) return t().secondary;
+  if (!Number.isFinite(minutes) || minutes <= 0) return "--";
+  return language === "zh" ? `${minutes}分钟` : `${minutes} min`;
+}
+
+function renderQuotaHistory() {
+  if (!elements.quotaHistoryList || !elements.quotaHistorySection) return;
+  const all = Array.isArray(quota?.usageHistoryArchive?.all) ? quota.usageHistoryArchive.all : [];
+  const groups = new Map();
+  for (const point of all) {
+    const at = Number(point?.at);
+    const used = Number(point?.usedPercent);
+    const duration = Number(point?.windowDurationMins);
+    const resetsAt = String(point?.resetsAt || "");
+    if (!Number.isFinite(at) || !Number.isFinite(used) || !Number.isFinite(duration) || !resetsAt) continue;
+    const key = `${duration}:${resetsAt}`;
+    if (!groups.has(key)) groups.set(key, { duration, resetsAt, points: [] });
+    groups.get(key).points.push({ at, used });
+  }
+  const ordered = [...groups.values()]
+    .map((group) => {
+      group.points.sort((left, right) => left.at - right.at);
+      return group;
+    })
+    .sort((left, right) => (right.points.at(-1)?.at || 0) - (left.points.at(-1)?.at || 0));
+  const visible = ordered.slice(0, 60);
+  elements.quotaHistoryList.replaceChildren();
+  elements.quotaHistorySection.hidden = false;
+  if (!visible.length) {
+    const empty = document.createElement("div");
+    empty.className = "quota-history-empty";
+    empty.textContent = t().quotaHistoryEmpty;
+    elements.quotaHistoryList.appendChild(empty);
+    elements.quotaHistorySummary.textContent = "";
+    return;
+  }
+  const fragment = document.createDocumentFragment();
+  for (const group of visible) {
+    const latest = group.points.at(-1);
+    const peak = Math.max(...group.points.map((point) => point.used));
+    const resetDate = new Date(group.resetsAt);
+    const resetLabel = Number.isFinite(resetDate.getTime())
+      ? resetDate.toLocaleString(language === "zh" ? "zh-CN" : "en-US", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
+      : "--";
+    const item = document.createElement("article");
+    item.className = "quota-history-item";
+    const title = document.createElement("strong");
+    title.textContent = historyDurationLabel(group.duration);
+    const status = document.createElement("span");
+    status.textContent = resetDate.getTime() > Date.now() ? (language === "zh" ? "当前周期" : "Current") : (language === "zh" ? "已结束" : "Completed");
+    const detail = document.createElement("small");
+    detail.textContent = t().quotaHistorySamples
+      .replace("{samples}", String(group.points.length))
+      .replace("{peak}", String(Math.round(peak * 10) / 10))
+      .replace("{last}", resetLabel);
+    item.append(title, status, detail);
+    fragment.appendChild(item);
+  }
+  elements.quotaHistoryList.appendChild(fragment);
+  elements.quotaHistorySummary.textContent = t().quotaHistorySummary
+    .replace("{count}", String(ordered.length))
+    .replace("{visible}", String(visible.length));
+}
+
 function renderModelUsage() {
   const report = quota?.modelUsage;
   const labels = t();
@@ -792,6 +865,7 @@ function applyLanguage() {
   elements.pageTitle.textContent = labels.title;
   elements.quotaHeading.textContent = labels.quota;
   elements.currentHeading.textContent = labels.current;
+  elements.quotaHistoryHeading.textContent = labels.quotaHistory;
   elements.tokenHeading.textContent = labels.token;
   elements.modelHeading.textContent = labels.modelUsage;
   elements.modelColumnModel.textContent = labels.model;
@@ -821,7 +895,7 @@ function applyLanguage() {
 }
 
 function render() {
-  if (!quota) return;
+  if (!quota || document.hidden) return;
   applyAccents();
   const labels = t();
   elements.currentHeading.textContent = `${labels.current} · ${quota.limitName || quota.activeSourceId || "Codex"}`;
@@ -858,6 +932,7 @@ function render() {
   }
   renderModelUsage();
   renderCalendar();
+  renderQuotaHistory();
   elements.statusText.textContent = `${labels.updated} · ${new Date(quota.fetchedAt || Date.now()).toLocaleTimeString(language === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
@@ -1038,6 +1113,9 @@ window.codexQuota.onRefresh(() => refresh({ force: true }));
 window.codexQuota.onQuotaUpdated((value) => { quota = value; render(); });
 window.codexQuota.onQuotaRefreshFailed(() => { if (quota) elements.statusText.textContent = t().error; });
 window.codexQuota.onToggleLanguage(toggleLanguage);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && quota) render();
+});
 
 (async () => {
   preferences = normalizePreferences(await window.codexQuota.getDisplayPreferences());

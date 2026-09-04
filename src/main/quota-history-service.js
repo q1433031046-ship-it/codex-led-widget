@@ -85,17 +85,51 @@ function projectHistoryForSource(value, source) {
   const normalizedSource = source && typeof source === "object" ? source : {};
   const limitId = normalizeSourceId(normalizedSource.id || normalizedSource.limitId || normalizedSource.activeSourceId);
   return {
-    primary: projectWindow(history, limitId, normalizedSource.primary || normalizedSource.shortTerm),
-    secondary: projectWindow(history, limitId, normalizedSource.secondary || normalizedSource.weekly),
+    primary: projectWindow(history, limitId, normalizedSource.primary || normalizedSource.shortTerm, history.legacy.primary, SHORT_TERM_WINDOW_MINS),
+    secondary: projectWindow(history, limitId, normalizedSource.secondary || normalizedSource.weekly, history.legacy.secondary, 10080),
   };
 }
 
-function projectWindow(history, limitId, quotaWindow) {
+function projectHistoryArchiveForSource(value, source) {
+  const history = loadHistoryData(value);
+  const normalizedSource = source && typeof source === "object" ? source : {};
+  const limitId = normalizeSourceId(normalizedSource.id || normalizedSource.limitId || normalizedSource.activeSourceId);
+  const all = [];
+  for (const [key, points] of Object.entries(history.series)) {
+    const separator = key.lastIndexOf(":");
+    if (key.slice(0, separator) === limitId) all.push(...points);
+  }
+  if (limitId === "codex") {
+    all.push(...history.legacy.primary.map((point) => normalizeLegacyHistoryPoint(point, SHORT_TERM_WINDOW_MINS)).filter(Boolean));
+    all.push(...history.legacy.secondary.map((point) => normalizeLegacyHistoryPoint(point, 10080)).filter(Boolean));
+  }
+  const primaryDuration = normalizeDuration((normalizedSource.primary || normalizedSource.shortTerm)?.windowDurationMins);
+  const secondaryDuration = normalizeDuration((normalizedSource.secondary || normalizedSource.weekly)?.windowDurationMins);
+  const deduped = all
+    .filter(Boolean)
+    .sort((left, right) => left.at - right.at)
+    .filter((point, index, points) => index === points.findIndex((candidate) =>
+      candidate.at === point.at && candidate.resetsAt === point.resetsAt && candidate.windowDurationMins === point.windowDurationMins));
+  return {
+    primary: deduped.filter((point) => point.windowDurationMins === primaryDuration),
+    secondary: deduped.filter((point) => point.windowDurationMins === secondaryDuration),
+    all: deduped
+  };
+}
+
+function projectWindow(history, limitId, quotaWindow, legacyPoints = [], legacyDuration = null) {
   const key = historySeriesKey(limitId, quotaWindow?.windowDurationMins);
   if (!key) return [];
   const series = Array.isArray(history.series[key]) ? history.series[key] : [];
+  const legacy = limitId === "codex"
+    ? legacyPoints.map((point) => normalizeLegacyHistoryPoint(point, legacyDuration)).filter(Boolean)
+    : [];
+  const merged = [...series, ...legacy]
+    .sort((left, right) => left.at - right.at)
+    .filter((point, index, points) => index === points.findIndex((candidate) =>
+      candidate.at === point.at && candidate.resetsAt === point.resetsAt && candidate.windowDurationMins === point.windowDurationMins));
   const resetsAt = quotaWindow?.resetsAt ? String(quotaWindow.resetsAt) : null;
-  return resetsAt ? series.filter((point) => point.resetsAt === resetsAt) : series.slice();
+  return resetsAt ? merged.filter((point) => point.resetsAt === resetsAt) : merged;
 }
 
 function quotaSources(quota) {
@@ -139,6 +173,14 @@ function normalizeHistoryPoint(point) {
   };
 }
 
+function normalizeLegacyHistoryPoint(point, fallbackDuration) {
+  if (!point || typeof point !== "object") return null;
+  return normalizeHistoryPoint({
+    ...point,
+    windowDurationMins: point.windowDurationMins || fallbackDuration
+  });
+}
+
 function preserveLegacySeries(points) {
   return Array.isArray(points)
     ? points.filter((point) => point && typeof point === "object").slice(-MAX_SERIES_POINTS).map((point) => ({ ...point }))
@@ -180,4 +222,5 @@ module.exports = {
   loadHistoryData,
   recordQuotaSnapshot,
   projectHistoryForSource,
+  projectHistoryArchiveForSource,
 };

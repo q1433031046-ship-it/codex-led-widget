@@ -211,6 +211,7 @@ module.exports = {
   ACCOUNT_PROFILE_SCHEMA_VERSION,
   ACCOUNT_REGISTRY_FILENAME,
   PROFILE_SCOPED_FILES,
+  atomicWrite,
   accountScopedFile,
   defaultAccountRegistry,
   deriveAccountProfile,

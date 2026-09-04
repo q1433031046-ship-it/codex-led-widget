@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld("codexQuota", {
   setMeterSizing: (value) => ipcRenderer.invoke("ui:meterSizing:set", value),
   setColumnSizing: (value) => ipcRenderer.invoke("ui:columnSizing:set", value),
   setCalendarPreferences: (value) => ipcRenderer.invoke("ui:calendarPreferences:set", value),
+  requestUsageInsights: () => ipcRenderer.send("usageInsights:request"),
   getPricingSettings: () => ipcRenderer.invoke("pricing:settings:get"),
   refreshPricingSettings: (scope) => ipcRenderer.invoke("pricing:settings:refresh", scope),
   setManualModelPrice: (value) => ipcRenderer.invoke("pricing:manual:set", value),

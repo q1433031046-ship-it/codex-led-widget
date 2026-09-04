@@ -5,6 +5,7 @@ const {
   activationRect,
   chooseSnapEdge,
   collapsedBounds,
+  collapsedShapeRects,
   constrainBoundsToWorkArea,
   meterSideForEdge,
   normalizeScaleFactor,
@@ -38,6 +39,10 @@ assert.equal(collapsedBounds(rightExpanded, workArea, "right", { strip: 7, keepM
 assert.equal(collapsedBounds(leftExpanded, workArea, "left", { strip: 7, keepMeter: false }).x, -293);
 assert.equal(collapsedBounds({ ...base, y: 0 }, workArea, "top", { strip: 7 }).y, -133);
 assert.equal(collapsedBounds({ ...base, y: 620 }, workArea, "bottom", { strip: 7 }).y, 753);
+assert.deepEqual(collapsedShapeRects(leftExpanded, "left", { strip: 7 }), [{ x: 293, y: 0, width: 7, height: 140 }]);
+assert.deepEqual(collapsedShapeRects(rightExpanded, "right", { strip: 7 }), [{ x: 0, y: 0, width: 7, height: 140 }]);
+assert.deepEqual(collapsedShapeRects({ ...base, y: 0 }, "top", { strip: 7 }), [{ x: 0, y: 133, width: 300, height: 7 }]);
+assert.deepEqual(collapsedShapeRects({ ...base, y: 620 }, "bottom", { strip: 7 }), [{ x: 0, y: 0, width: 300, height: 7 }]);
 
 assert.equal(meterSideForEdge("left", "left"), "right");
 assert.equal(meterSideForEdge("right", "right"), "left");
@@ -132,6 +137,8 @@ assert.match(mainSource, /displayScaleFactor/);
 assert.match(mainSource, /scaleBoundsForDisplay/);
 assert.match(mainSource, /scheduleMagnetMoveFinished/);
 assert.match(mainSource, /preserveDisplay/);
+assert.match(mainSource, /setMainWindowShape/);
+assert.match(mainSource, /collapsedShapeRects/);
 assert.doesNotMatch(mainSource, /mainWindow\.on\("moved", handleMagnetMoveFinished\)/);
 assert.match(settingsSource, /仪表位置/);
 assert.match(mainSource, /resolveMeterSide/);

@@ -218,6 +218,10 @@ let displayPreferences = {
 };
 let magnetRuntime = { enabled: false, edge: null, expanded: true, meterSide: "left" };
 let magnetGeometryFrame = null;
+let liquidAnimationFrame = null;
+let liquidAnimationStarted = false;
+let liquidFrameInProgress = false;
+let lastLiquidPaintAt = null;
 
 const MAX_STORED_METER_SIZE = 4096;
 const MIN_METER_SIZE = 19.2;
@@ -336,6 +340,7 @@ function applyDisplayPreferences(value) {
 }
 
 function applyMagnetState(value) {
+  const wasActive = isRendererRenderActive();
   magnetRuntime = {
     enabled: Boolean(value?.enabled),
     edge: ["left", "right", "top", "bottom"].includes(value?.edge) ? value.edge : null,
@@ -343,6 +348,40 @@ function applyMagnetState(value) {
     meterSide: value?.meterSide === "right" ? "right" : "left"
   };
   updateLayoutMode();
+  if (!wasActive && isRendererRenderActive() && (lastQuota || lastError)) render();
+}
+
+function isRendererRenderActive() {
+  return window.resourcePolicy?.isRenderActive({
+    hidden: document.hidden,
+    expanded: !magnetRuntime.enabled || !magnetRuntime.edge || magnetRuntime.expanded,
+    hasVisuals: true
+  }) ?? (!document.hidden && (!magnetRuntime.enabled || !magnetRuntime.edge || magnetRuntime.expanded));
+}
+
+function isLiquidAnimationActive() {
+  return isRendererRenderActive() && !elements.liquidMeter.hidden;
+}
+
+function stopLiquidSurfaceAnimation() {
+  if (liquidAnimationFrame !== null) window.cancelAnimationFrame(liquidAnimationFrame);
+  liquidAnimationFrame = null;
+  liquidWave.lastFrameAt = null;
+  lastLiquidPaintAt = null;
+}
+
+function updateAnimationActivity() {
+  const active = isRendererRenderActive();
+  const liquidActive = isLiquidAnimationActive();
+  document.body.dataset.renderIdle = String(!active);
+  elements.liquidMeter.dataset.animationIdle = String(!liquidActive);
+  if (!liquidActive) {
+    stopLiquidSurfaceAnimation();
+    return;
+  }
+  if (liquidAnimationStarted && liquidAnimationFrame === null && !liquidFrameInProgress) {
+    liquidAnimationFrame = window.requestAnimationFrame(renderLiquidSurface);
+  }
 }
 
 function scheduleMagnetGeometryReport() {
@@ -625,7 +664,8 @@ function updateLayoutMode() {
   applyColumnSizing();
   applyMeterSizing();
   scheduleMagnetGeometryReport();
-  if (layout === "chart") window.requestAnimationFrame(renderUsageCharts);
+  updateAnimationActivity();
+  if (layout === "chart" && isRendererRenderActive()) window.requestAnimationFrame(renderUsageCharts);
 }
 
 function applyColumnSizing(value = displayPreferences.columnSizing) {
@@ -1217,7 +1257,7 @@ function applyQuotaAccents(primaryRemaining, secondaryRemaining, meterRemaining)
   }
   clearTimeout(accentRedrawTimer);
   accentRedrawTimer = window.setTimeout(() => {
-    if (lastQuota) renderUsageCharts();
+    if (lastQuota && isRendererRenderActive()) renderUsageCharts();
   }, 2450);
 }
 
@@ -1268,7 +1308,16 @@ function smoothLiquidWave(displacement, length, phase) {
 }
 
 function renderLiquidSurface(frameAt) {
+  liquidAnimationFrame = null;
   if (!elements.liquidFill || !elements.liquidMeter) return;
+  if (!isLiquidAnimationActive()) return;
+  const frameInterval = window.resourcePolicy?.LIQUID_FRAME_INTERVAL_MS || (1000 / 30);
+  if (lastLiquidPaintAt !== null && frameAt - lastLiquidPaintAt < frameInterval) {
+    liquidAnimationFrame = window.requestAnimationFrame(renderLiquidSurface);
+    return;
+  }
+  liquidFrameInProgress = true;
+  lastLiquidPaintAt = frameAt;
   if (liquidWave.lastFrameAt === null) liquidWave.lastFrameAt = frameAt;
   const elapsedMs = Math.max(0, Math.min(80, frameAt - liquidWave.lastFrameAt));
   liquidWave.lastFrameAt = frameAt;
@@ -1306,12 +1355,14 @@ function renderLiquidSurface(frameAt) {
     }
     elements.liquidFill.style.clipPath = `polygon(${points.join(",")})`;
   }
-  window.requestAnimationFrame(renderLiquidSurface);
+  liquidFrameInProgress = false;
+  if (isLiquidAnimationActive()) liquidAnimationFrame = window.requestAnimationFrame(renderLiquidSurface);
 }
 
 function startLiquidSurfaceAnimation() {
+  liquidAnimationStarted = true;
   liquidWave.lastFrameAt = null;
-  window.requestAnimationFrame(renderLiquidSurface);
+  updateAnimationActivity();
 }
 
 function applyMeterEffects(remainingValue, totalRemainingValue) {
@@ -1332,6 +1383,10 @@ function applyMeterEffects(remainingValue, totalRemainingValue) {
 }
 
 function render() {
+  if (!isRendererRenderActive()) {
+    updateAnimationActivity();
+    return;
+  }
   const t = text();
   if (refreshing) {
     if (!lastQuota) {
@@ -1478,6 +1533,7 @@ elements.pinBtn.addEventListener("click", async () => {
 elements.refreshBtn.addEventListener("click", () => refreshQuota({ force: true }));
 elements.minimizeBtn.addEventListener("click", () => window.codexQuota.minimize());
 elements.closeBtn.addEventListener("click", () => window.codexQuota.close());
+elements.widget.addEventListener("pointerenter", () => window.codexQuota.requestUsageInsights?.());
 for (const handle of elements.cardResizeHandles) handle.addEventListener("pointerdown", startCardResize);
 for (const handle of elements.cardCornerResizeHandles) handle.addEventListener("pointerdown", startCardCornerResize);
 for (const handle of elements.meterResizeHandles) handle.addEventListener("pointerdown", startMeterResize);
@@ -1512,6 +1568,11 @@ window.codexQuota.onAlwaysOnTopChanged((value) => {
 });
 
 window.addEventListener("resize", updateLayoutMode);
+document.addEventListener("visibilitychange", () => {
+  const active = isRendererRenderActive();
+  updateAnimationActivity();
+  if (active && (lastQuota || lastError)) render();
+});
 window.addEventListener("contextmenu", (event) => {
   event.preventDefault();
   window.codexQuota.showContextMenu();
@@ -1537,6 +1598,6 @@ function scheduleLocalMidnightRefresh() {
   await refreshQuota();
   scheduleLocalMidnightRefresh();
   window.setInterval(() => {
-    if (lastQuota && !refreshing) render();
+    if (lastQuota && !refreshing && isRendererRenderActive()) render();
   }, 30_000);
 })();

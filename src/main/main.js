@@ -7,8 +7,10 @@ const {
   emptyHistoryData,
   loadHistoryData,
   recordQuotaSnapshot,
-  projectHistoryForSource
+  projectHistoryForSource,
+  projectHistoryArchiveForSource
 } = require("./quota-history-service");
+const { USAGE_INSIGHTS_REFRESH_MS, AUXILIARY_WINDOW_IDLE_MS, isUsageRefreshDue } = require("../shared/resource-policy");
 const { createModelUsageService } = require("./model-usage-service");
 const { createModelPriceService, enrichModelUsage } = require("./model-price-service");
 const { formatDisplayVersion, releaseFromGitHub, shouldNotifyUpdate } = require("./update-service");
@@ -22,6 +24,7 @@ const {
 const { createInitializationController } = require("./initialization-controller");
 const {
   PROFILE_SCOPED_FILES,
+  atomicWrite,
   ensureAccountProfile,
   loadAccountRegistry,
   profileDirectory
@@ -30,6 +33,7 @@ const {
   activationRect,
   chooseSnapEdge,
   collapsedBounds,
+  collapsedShapeRects,
   isMagnetEdge,
   meterSideForEdge,
   normalizeScaleFactor,
@@ -73,6 +77,9 @@ let modelPriceService;
 let modelUsageSnapshot = null;
 let usageInsightsRefreshPromise = null;
 let usageInsightsRefreshTimer = null;
+let usageInsightsLastSucceededAt = 0;
+let statsWindowIdleTimer = null;
+let settingsWindowIdleTimer = null;
 let updateCheckTimer = null;
 let lastQuotaPayload = null;
 let initializationState;
@@ -609,7 +616,7 @@ function recordQuotaStatsSnapshot(quota) {
   }
   if (changed) {
     try {
-      fs.writeFileSync(quotaStatsLedgerPath(), JSON.stringify(quotaStatsLedger), "utf8");
+      atomicWrite(quotaStatsLedgerPath(), quotaStatsLedger);
     } catch {
       // Keep tracking in memory when persistence is temporarily unavailable.
     }
@@ -689,7 +696,7 @@ function loadQuotaSnapshot() {
 
 function saveQuotaSnapshot(payload) {
   try {
-    fs.writeFileSync(quotaSnapshotPath(), JSON.stringify(payload), "utf8");
+    atomicWrite(quotaSnapshotPath(), payload);
   } catch {
     // The in-memory snapshot still keeps both windows responsive.
   }
@@ -698,12 +705,14 @@ function saveQuotaSnapshot(payload) {
 function currentQuotaPayload(payload = lastQuotaPayload) {
   if (!payload) return null;
   const activeHistory = projectHistoryForSource(usageHistory, payload);
+  const historyArchive = projectHistoryArchiveForSource(usageHistory, payload);
   const modelUsage = modelUsageSnapshot && modelPriceService
     ? enrichModelUsage(modelUsageSnapshot, modelPriceService.snapshot())
     : payload.modelUsage || null;
   return {
     ...payload,
     usageHistory: activeHistory,
+    usageHistoryArchive: historyArchive,
     modelUsage,
     quotaStats: calculateQuotaStats()
   };
@@ -727,7 +736,7 @@ function recordUsageSnapshot(quota) {
   usageHistory = result.history;
   if (result.changed) {
     try {
-      fs.writeFileSync(usageHistoryPath(), JSON.stringify(usageHistory), "utf8");
+      atomicWrite(usageHistoryPath(), usageHistory);
     } catch {
       // The widget can keep charting in memory if persistence is unavailable.
     }
@@ -756,14 +765,14 @@ function initializeAccountProfileStorage() {
 
 function persistCurrentAccountScopedState() {
   try {
-    fs.writeFileSync(displayPreferencesPath(), JSON.stringify(displayPreferences), "utf8");
+    atomicWrite(displayPreferencesPath(), displayPreferences);
   } catch {
     // Keep the active preferences in memory when persistence is temporarily unavailable.
   }
   if (lastQuotaPayload) saveQuotaSnapshot(lastQuotaPayload);
   try {
-    fs.writeFileSync(usageHistoryPath(), JSON.stringify(usageHistory), "utf8");
-    fs.writeFileSync(quotaStatsLedgerPath(), JSON.stringify(quotaStatsLedger), "utf8");
+    atomicWrite(usageHistoryPath(), usageHistory);
+    atomicWrite(quotaStatsLedgerPath(), quotaStatsLedger);
   } catch {
     // In-memory history and statistics remain available for the current session.
   }
@@ -1160,9 +1169,11 @@ async function restoreOfficialModelPrice(model) {
 async function refreshUsageInsights(options = {}) {
   if (!modelUsageService || !modelPriceService) return null;
   if (usageInsightsRefreshPromise) return usageInsightsRefreshPromise;
+  if (!isUsageRefreshDue(usageInsightsLastSucceededAt, Date.now(), options.force === true)) return currentQuotaPayload();
   usageInsightsRefreshPromise = (async () => {
     modelUsageSnapshot = await modelUsageService.refresh();
     await modelPriceService.refresh(modelUsageSnapshot.models?.map((entry) => entry.model), options);
+    usageInsightsLastSucceededAt = Date.now();
     applyModelUsagePricing();
     return currentQuotaPayload();
   })().catch(() => currentQuotaPayload()).finally(() => { usageInsightsRefreshPromise = null; });
@@ -1171,13 +1182,15 @@ async function refreshUsageInsights(options = {}) {
 
 function startUsageInsightsRefresh() {
   clearInterval(usageInsightsRefreshTimer);
-  refreshUsageInsights().catch(() => {});
-  usageInsightsRefreshTimer = setInterval(() => refreshUsageInsights().catch(() => {}), 60_000);
+  refreshUsageInsights({ force: true }).catch(() => {});
+  usageInsightsRefreshTimer = setInterval(() => refreshUsageInsights().catch(() => {}), USAGE_INSIGHTS_REFRESH_MS);
 }
 
 function notifyQuotaUpdated(payload) {
   for (const target of [mainWindow, statsWindow]) {
-    if (target && !target.isDestroyed()) target.webContents.send("quota:updated", payload);
+    if (!target || target.isDestroyed()) continue;
+    if (target === statsWindow && !target.isVisible()) continue;
+    target.webContents.send("quota:updated", payload);
   }
   notifySettingsStateChanged();
 }
@@ -1250,7 +1263,7 @@ async function refreshQuotaSnapshot(options = {}) {
 }
 
 function getQuotaPayload(options = {}) {
-  if (options?.force === true) refreshUsageInsights().catch(() => {});
+  if (options?.force === true) refreshUsageInsights({ force: true }).catch(() => {});
   if (options?.force === true || !lastQuotaPayload) return refreshQuotaSnapshot();
   return Promise.resolve(currentQuotaPayload());
 }
@@ -1347,11 +1360,12 @@ function stopMagnetAnimation() {
   magnetAnimationTimer = null;
 }
 
-function animateMainWindowTo(targetBounds, duration = MAGNET_ANIMATION_MS) {
+function animateMainWindowTo(targetBounds, duration = MAGNET_ANIMATION_MS, onComplete = null) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   stopMagnetAnimation();
   const start = mainWindow.getBounds();
   const startedAt = Date.now();
+  let completed = false;
   const tick = () => {
     if (!mainWindow || mainWindow.isDestroyed()) {
       stopMagnetAnimation();
@@ -1368,10 +1382,33 @@ function animateMainWindowTo(targetBounds, duration = MAGNET_ANIMATION_MS) {
     if (progress >= 1) {
       stopMagnetAnimation();
       setMainWindowBoundsProgrammatically(targetBounds);
+      if (!completed) {
+        completed = true;
+        if (typeof onComplete === "function") onComplete();
+      }
     }
   };
   tick();
   magnetAnimationTimer = setInterval(tick, 16);
+}
+
+function setMainWindowShape(mode = magnetState.expanded ? "expanded" : "collapsed") {
+  if (!mainWindow || mainWindow.isDestroyed() || typeof mainWindow.setShape !== "function") return false;
+  const bounds = mainWindow.getBounds();
+  const rects = mode === "collapsed"
+    ? collapsedShapeRects(bounds, magnetState.edge, {
+      strip: MAGNET_VISIBLE_STRIP,
+      keepMeter: magnetGeometry.keepMeter && ["left", "right"].includes(magnetState.edge),
+      sideVisible: magnetGeometry.sideVisible
+    })
+    : [{ x: 0, y: 0, width: Math.max(1, Math.round(bounds.width)), height: Math.max(1, Math.round(bounds.height)) }];
+  if (!rects.length) return false;
+  try {
+    mainWindow.setShape(rects);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function magnetCollapsedBounds() {
@@ -1396,7 +1433,9 @@ function expandMagnetWindow(options = {}) {
   notifyMagnetState();
   if (!mainWindow.isVisible()) mainWindow.showInactive();
   applyAlwaysOnTop();
-  animateMainWindowTo(magnetState.expandedBounds, options.immediate ? 1 : MAGNET_ANIMATION_MS);
+  const duration = options.immediate ? 1 : MAGNET_ANIMATION_MS;
+  setMainWindowShape("collapsed");
+  animateMainWindowTo(magnetState.expandedBounds, duration, () => setMainWindowShape("expanded"));
 }
 
 function collapseMagnetWindow(options = {}) {
@@ -1407,7 +1446,8 @@ function collapseMagnetWindow(options = {}) {
   magnetState.expanded = false;
   notifyMagnetState();
   applyAlwaysOnTop();
-  animateMainWindowTo(target, options.immediate ? 1 : MAGNET_ANIMATION_MS);
+  setMainWindowShape("collapsed");
+  animateMainWindowTo(target, options.immediate ? 1 : MAGNET_ANIMATION_MS, () => setMainWindowShape("collapsed"));
 }
 
 function scheduleMagnetRetract() {
@@ -1434,8 +1474,10 @@ function dockMainWindow(edge, sourceBounds = mainWindow?.getBounds(), options = 
   magnetState.expanded = options.collapsed !== true;
   magnetState.meterSide = resolveMeterSide(edge, magnetState.meterSide);
   notifyMagnetState();
-  if (magnetState.expanded) setMainWindowBoundsProgrammatically(magnetState.expandedBounds);
-  else collapseMagnetWindow({ immediate: options.immediate });
+  if (magnetState.expanded) {
+    setMainWindowBoundsProgrammatically(magnetState.expandedBounds);
+    setMainWindowShape("expanded");
+  } else collapseMagnetWindow({ immediate: options.immediate });
   saveWindowState(mainWindow, windowStatePath());
   return true;
 }
@@ -1457,6 +1499,7 @@ function undockMainWindow(bounds = mainWindow?.getBounds(), options = {}) {
   magnetState.expanded = true;
   magnetState.expandedBounds = bounds ? { ...bounds } : magnetState.expandedBounds;
   notifyMagnetState();
+  setMainWindowShape("expanded");
   saveWindowState(mainWindow, windowStatePath());
 }
 
@@ -1530,6 +1573,7 @@ function updateMagnetGeometry(value) {
   magnetGeometry = nextGeometry;
   if (!geometryChanged) return;
   if (magnetEnabled() && magnetState.edge && !magnetState.expanded) {
+    setMainWindowShape("collapsed");
     const target = magnetCollapsedBounds();
     if (target) animateMainWindowTo(target, 130);
   }
@@ -1568,7 +1612,10 @@ function reanchorMagnetWindow() {
   const display = magnetDisplay(mainWindow?.getBounds() || magnetState.expandedBounds);
   const reconciled = reconcileMagnetDisplay(magnetState.expandedBounds, display);
   magnetState.expandedBounds = snapExpandedBounds(reconciled.bounds || magnetState.expandedBounds, display.workArea, magnetState.edge);
-  if (magnetState.expanded) setMainWindowBoundsProgrammatically(magnetState.expandedBounds);
+  if (magnetState.expanded) {
+    setMainWindowBoundsProgrammatically(magnetState.expandedBounds);
+    setMainWindowShape("expanded");
+  }
   else collapseMagnetWindow({ immediate: true });
   saveWindowState(mainWindow, windowStatePath());
 }
@@ -1629,6 +1676,7 @@ function createWindow() {
   applyAlwaysOnTop();
   mainWindow.on("resize", () => {
     if (!magnetProgrammaticMove && magnetState.expanded) magnetState.expandedBounds = mainWindow.getBounds();
+    setMainWindowShape(magnetState.expanded ? "expanded" : "collapsed");
     scheduleMainWindowStateSave();
   });
   mainWindow.on("will-move", () => {
@@ -1667,12 +1715,16 @@ function createWindow() {
       magnetState.expandedBounds = snapExpandedBounds(reconciled.bounds || magnetState.expandedBounds, display.workArea, magnetState.edge);
       notifyMagnetState();
       const target = magnetCollapsedBounds();
-      if (target) setMainWindowBoundsProgrammatically(target);
+      if (target) {
+        setMainWindowShape("collapsed");
+        setMainWindowBoundsProgrammatically(target);
+      }
       // Persist the re-anchored expanded bounds so a stale display/DPI
       // coordinate is repaired permanently instead of on every launch.
       saveWindowState(mainWindow, windowStatePath());
       mainWindow.showInactive();
     } else {
+      setMainWindowShape("expanded");
       mainWindow.show();
     }
     if (!savedState.hasPosition && !magnetState.edge) {
@@ -1710,6 +1762,8 @@ function createStatsWindow() {
   statsWindow.on("resize", scheduleStatsWindowStateSave);
   statsWindow.on("move", scheduleStatsWindowStateSave);
   statsWindow.on("close", () => saveWindowState(statsWindow, statsWindowStatePath()));
+  statsWindow.on("show", () => clearTimeout(statsWindowIdleTimer));
+  statsWindow.on("hide", () => scheduleAuxiliaryWindowDispose("stats"));
   statsWindow.loadFile(path.join(__dirname, "../renderer/stats.html"));
   statsWindow.on("closed", () => {
     statsWindow = null;
@@ -1717,13 +1771,39 @@ function createStatsWindow() {
 }
 
 function showStatsWindow() {
+  clearTimeout(statsWindowIdleTimer);
   if (!statsWindow || statsWindow.isDestroyed()) createStatsWindow();
   const revealStatsWindow = () => {
     statsWindow?.show();
     statsWindow?.focus();
+    if (statsWindow && !statsWindow.isDestroyed()) {
+      const payload = currentQuotaPayload();
+      if (payload) statsWindow.webContents.send("quota:updated", payload);
+    }
+    refreshUsageInsights({ force: true }).catch(() => {});
   };
   if (statsWindow.webContents.isLoading()) statsWindow.once("ready-to-show", revealStatsWindow);
   else revealStatsWindow();
+}
+
+function scheduleAuxiliaryWindowDispose(kind) {
+  const isStats = kind === "stats";
+  const target = isStats ? statsWindow : settingsWindow;
+  if (!target || target.isDestroyed() || isQuitting) return;
+  const timerKey = isStats ? "statsWindowIdleTimer" : "settingsWindowIdleTimer";
+  clearTimeout(isStats ? statsWindowIdleTimer : settingsWindowIdleTimer);
+  const timer = setTimeout(() => {
+    const current = isStats ? statsWindow : settingsWindow;
+    if (!current || current.isDestroyed() || current.isVisible() || isQuitting) return;
+    try {
+      if (isStats) saveWindowState(current, statsWindowStatePath());
+      current.destroy();
+    } catch {
+      // A closing auxiliary window is best-effort; it can be recreated on demand.
+    }
+  }, AUXILIARY_WINDOW_IDLE_MS);
+  if (timerKey === "statsWindowIdleTimer") statsWindowIdleTimer = timer;
+  else settingsWindowIdleTimer = timer;
 }
 
 function normalizeSettingsSection(value) {
@@ -1876,6 +1956,8 @@ function createSettingsWindow(initialSection = "quota") {
     event.preventDefault();
     settingsWindow.hide();
   });
+  settingsWindow.on("show", () => clearTimeout(settingsWindowIdleTimer));
+  settingsWindow.on("hide", () => scheduleAuxiliaryWindowDispose("settings"));
   settingsWindow.on("closed", () => {
     settingsWindow = null;
   });
@@ -1884,6 +1966,7 @@ function createSettingsWindow(initialSection = "quota") {
 
 function showSettingsWindow(section = "quota") {
   const normalizedSection = normalizeSettingsSection(section);
+  clearTimeout(settingsWindowIdleTimer);
   const target = createSettingsWindow(normalizedSection);
   const reveal = () => {
     if (!target || target.isDestroyed()) return;
@@ -2311,6 +2394,7 @@ app.whenReady().then(async () => {
   }
 
   ipcMain.handle("quota:get", (_event, options) => getQuotaPayload(options));
+  ipcMain.on("usageInsights:request", () => refreshUsageInsights().catch(() => {}));
   ipcMain.handle("window:minimize", () => mainWindow?.hide());
   ipcMain.handle("window:close", () => app.quit());
   ipcMain.on("window:resizeFromCorner", (_event, value) => resizeMainWindowFromCorner(value));

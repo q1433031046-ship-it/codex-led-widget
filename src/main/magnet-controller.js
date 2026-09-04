@@ -196,6 +196,20 @@ function collapsedBounds(expandedBounds, workArea, edge, options = {}) {
   return next;
 }
 
+function collapsedShapeRects(bounds, edge, options = {}) {
+  if (!validRect(bounds) || !isMagnetEdge(edge)) return [];
+  const width = Math.max(1, Math.round(Number(bounds.width)));
+  const height = Math.max(1, Math.round(Number(bounds.height)));
+  const strip = clamp(Math.round(Number(options.strip) || 7), 1, Math.min(width, height));
+  const visibleWidth = options.keepMeter
+    ? clamp(Math.round(Number(options.sideVisible) || strip), strip, width)
+    : strip;
+  if (edge === "left") return [{ x: width - visibleWidth, y: 0, width: visibleWidth, height }];
+  if (edge === "right") return [{ x: 0, y: 0, width: visibleWidth, height }];
+  if (edge === "top") return [{ x: 0, y: height - strip, width, height: strip }];
+  return [{ x: 0, y: 0, width, height: strip }];
+}
+
 function activationRect(expandedBounds, workArea, edge, options = {}) {
   const strip = Math.max(2, Math.round(Number(options.strip) || 7));
   const margin = Math.max(0, Math.round(Number(options.margin) || 6));
@@ -236,6 +250,7 @@ module.exports = {
   activationRect,
   chooseSnapEdge,
   collapsedBounds,
+  collapsedShapeRects,
   isMagnetEdge,
   meterSideForEdge,
   pointInRect,

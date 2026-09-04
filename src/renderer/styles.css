@@ -71,6 +71,15 @@
   display: none !important;
 }
 
+/* Keep the last frame while hidden or magnetically retracted, but stop
+   compositor and animation work until the widget is visible again. */
+body[data-render-idle="true"] *,
+.liquid-meter[data-animation-idle="true"] * {
+  animation-play-state: paused !important;
+  transition: none !important;
+  will-change: auto !important;
+}
+
 html,
 body {
   width: 100%;
