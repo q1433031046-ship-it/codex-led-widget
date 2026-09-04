@@ -1361,7 +1361,7 @@ function stopMagnetAnimation() {
   magnetAnimationTimer = null;
 }
 
-function animateMainWindowTo(targetBounds, duration = MAGNET_ANIMATION_MS, onComplete = null) {
+function animateMainWindowTo(targetBounds, duration = MAGNET_ANIMATION_MS, onComplete = null, onFrame = null) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   stopMagnetAnimation();
   const start = mainWindow.getBounds();
@@ -1380,6 +1380,7 @@ function animateMainWindowTo(targetBounds, duration = MAGNET_ANIMATION_MS, onCom
       width: targetBounds.width,
       height: targetBounds.height
     });
+    if (typeof onFrame === "function") onFrame();
     if (progress >= 1) {
       stopMagnetAnimation();
       setMainWindowBoundsProgrammatically(targetBounds);
@@ -1446,7 +1447,12 @@ function expandMagnetWindow(options = {}) {
   setMainWindowShape("expanded");
   const startAnimation = () => {
     if (!magnetState.expanded || !mainWindow || mainWindow.isDestroyed()) return;
-    animateMainWindowTo(magnetState.expandedBounds, duration, () => setMainWindowShape("expanded"));
+    animateMainWindowTo(
+      magnetState.expandedBounds,
+      duration,
+      () => setMainWindowShape("expanded"),
+      () => setMainWindowShape("expanded")
+    );
   };
   // Give the renderer one event-loop turn to paint the prewarmed frame.
   if (duration <= 1) startAnimation();
