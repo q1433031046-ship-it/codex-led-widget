@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3 - 2026-09-04
+
+- 修复不同 DPI 显示器之间拖动悬浮窗时视觉尺寸割裂的问题：跨屏只按新旧 `scaleFactor` 换算一次，并继续遵守目标工作区边界。
+- 增加接缝显示器迟滞，窗口中心必须越过稳定带后才切换目标显示器，避免边缘在多屏接缝处来回跳动。
+- 合并 `move`/`moved` 的磁吸结算调度，程序化动画和热插拔重锚不会重复触发用户拖动逻辑。
+
 ## 1.2.2 - 2026-09-02
 
 - Normalized widget, statistics, and settings typography across window sizes.

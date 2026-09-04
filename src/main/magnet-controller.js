@@ -1,4 +1,6 @@
 const MAGNET_EDGES = ["left", "right", "top", "bottom"];
+const DEFAULT_MIN_SCALE_FACTOR = 0.5;
+const DEFAULT_MAX_SCALE_FACTOR = 8;
 
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -8,6 +10,18 @@ function validRect(rect) {
   return Number.isFinite(Number(rect?.x)) && Number.isFinite(Number(rect?.y)) &&
     Number.isFinite(Number(rect?.width)) && Number.isFinite(Number(rect?.height)) &&
     Number(rect.width) > 0 && Number(rect.height) > 0;
+}
+
+function normalizeScaleFactor(value, options = {}) {
+  const minimum = Number.isFinite(Number(options?.minimum))
+    ? Number(options.minimum)
+    : DEFAULT_MIN_SCALE_FACTOR;
+  const maximum = Number.isFinite(Number(options?.maximum))
+    ? Number(options.maximum)
+    : DEFAULT_MAX_SCALE_FACTOR;
+  const factor = Number(value);
+  if (!Number.isFinite(factor) || factor < minimum || factor > maximum) return null;
+  return factor;
 }
 
 function intersectionArea(left, right) {
@@ -33,13 +47,22 @@ function constrainBoundsToWorkArea(bounds, workArea) {
   };
 }
 
-function resolveDisplayForBounds(displays, bounds, rememberedId = null) {
+function resolveDisplayForBounds(displays, bounds, rememberedId = null, options = {}) {
   const candidates = Array.isArray(displays) ? displays.filter((display) => validRect(display?.bounds)) : [];
   if (!candidates.length) return null;
   const remembered = candidates.find((display) => String(display.id) === String(rememberedId));
   if (!validRect(bounds)) return remembered || candidates[0];
 
   const center = { x: Number(bounds.x) + Number(bounds.width) / 2, y: Number(bounds.y) + Number(bounds.height) / 2 };
+  const hysteresis = Math.max(0, Number(options?.hysteresis) || 0);
+  if (remembered && hysteresis > 0) {
+    const rememberedBounds = remembered.bounds;
+    const insideRememberedBand = center.x > rememberedBounds.x - hysteresis &&
+      center.x < rememberedBounds.x + rememberedBounds.width + hysteresis &&
+      center.y > rememberedBounds.y - hysteresis &&
+      center.y < rememberedBounds.y + rememberedBounds.height + hysteresis;
+    if (insideRememberedBand) return remembered;
+  }
   const centered = candidates.find((display) =>
     center.x >= display.bounds.x && center.x <= display.bounds.x + display.bounds.width &&
     center.y >= display.bounds.y && center.y <= display.bounds.y + display.bounds.height
@@ -63,6 +86,45 @@ function resolveDisplayForBounds(displays, bounds, rememberedId = null) {
       return left.distance - right.distance || right.remembered - left.remembered || left.index - right.index;
     });
   return ranked[0].display;
+}
+
+function resolveScaleAnchor(bounds, anchor) {
+  const center = {
+    x: Number(bounds.x) + Number(bounds.width) / 2,
+    y: Number(bounds.y) + Number(bounds.height) / 2
+  };
+  if (anchor && typeof anchor === "object") {
+    return {
+      x: anchor.x === "left" ? Number(bounds.x)
+        : anchor.x === "right" ? Number(bounds.x) + Number(bounds.width)
+          : center.x,
+      y: anchor.y === "top" ? Number(bounds.y)
+        : anchor.y === "bottom" ? Number(bounds.y) + Number(bounds.height)
+          : center.y
+    };
+  }
+  if (anchor === "left") return { x: Number(bounds.x), y: center.y };
+  if (anchor === "right") return { x: Number(bounds.x) + Number(bounds.width), y: center.y };
+  if (anchor === "top") return { x: center.x, y: Number(bounds.y) };
+  if (anchor === "bottom") return { x: center.x, y: Number(bounds.y) + Number(bounds.height) };
+  return center;
+}
+
+function scaleBoundsForDisplay(bounds, fromScaleFactor, toScaleFactor, anchor = "center") {
+  if (!validRect(bounds)) return { ...bounds };
+  const from = normalizeScaleFactor(fromScaleFactor);
+  const to = normalizeScaleFactor(toScaleFactor);
+  if (!from || !to || Math.abs(from - to) < 0.0001) return { ...bounds };
+  const ratio = from / to;
+  const width = Math.max(1, Math.round(Number(bounds.width) * ratio));
+  const height = Math.max(1, Math.round(Number(bounds.height) * ratio));
+  const anchorPoint = resolveScaleAnchor(bounds, anchor);
+  return {
+    x: Math.round(anchorPoint.x - (anchor?.x === "left" || anchor === "left" ? 0 : anchor?.x === "right" || anchor === "right" ? width : width / 2)),
+    y: Math.round(anchorPoint.y - (anchor?.y === "top" || anchor === "top" ? 0 : anchor?.y === "bottom" || anchor === "bottom" ? height : height / 2)),
+    width,
+    height
+  };
 }
 
 function isMagnetEdge(value) {
@@ -179,6 +241,8 @@ module.exports = {
   pointInRect,
   constrainBoundsToWorkArea,
   intersectionArea,
+  normalizeScaleFactor,
   resolveDisplayForBounds,
+  scaleBoundsForDisplay,
   snapExpandedBounds
 };

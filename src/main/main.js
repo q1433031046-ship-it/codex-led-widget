@@ -32,8 +32,10 @@ const {
   collapsedBounds,
   isMagnetEdge,
   meterSideForEdge,
+  normalizeScaleFactor,
   pointInRect,
   resolveDisplayForBounds,
+  scaleBoundsForDisplay,
   snapExpandedBounds
 } = require("./magnet-controller");
 const PRODUCT_NAME = "Codex 额度桌面助手";
@@ -84,6 +86,7 @@ let magnetAnimationTimer = null;
 let magnetProgrammaticMoveResetTimer = null;
 let magnetMoveSettleTimer = null;
 let magnetMenuOpen = false;
+let magnetUserMoveActive = false;
 const magnetOpenMenus = new Set();
 let magnetProgrammaticMove = false;
 let magnetGeometry = { sideVisible: 7, keepMeter: false };
@@ -95,6 +98,7 @@ let activeAccountDirectory = null;
 let magnetState = {
   edge: null,
   displayId: null,
+  displayScaleFactor: null,
   expanded: true,
   expandedBounds: null,
   meterSide: "left"
@@ -110,6 +114,7 @@ const MAX_STORED_METER_SIZE = 4096;
 const MIN_METER_SIZE = 19.2;
 const MAGNET_SNAP_DISTANCE = 30;
 const MAGNET_CORNER_HYSTERESIS = 10;
+const MAGNET_DISPLAY_HYSTERESIS = 48;
 const MAGNET_VISIBLE_STRIP = 7;
 const MAGNET_RETRACT_DELAY = 0;
 const MAGNET_ANIMATION_MS = 210;
@@ -206,7 +211,8 @@ function loadWindowState(filePath, defaults, minimums) {
       x: Number(saved.x),
       y: Number(saved.y),
       magnetEdge: isMagnetEdge(saved.magnetEdge) ? saved.magnetEdge : null,
-      displayId: saved.displayId ?? null
+      displayId: saved.displayId ?? null,
+      displayScaleFactor: normalizeScaleFactor(saved.displayScaleFactor)
     };
     state.hasPosition = hasVisibleWindowArea(state);
     return state;
@@ -228,7 +234,11 @@ function saveWindowState(targetWindow, filePath) {
       y,
       width,
       height,
-      ...(isMain ? { magnetEdge: magnetState.edge, displayId: magnetState.displayId } : {})
+      ...(isMain ? {
+        magnetEdge: magnetState.edge,
+        displayId: magnetState.displayId,
+        displayScaleFactor: normalizeScaleFactor(magnetState.displayScaleFactor)
+      } : {})
     }), "utf8");
   } catch {
     // Keep the active layout when persistence is temporarily unavailable.
@@ -762,6 +772,9 @@ function persistCurrentAccountScopedState() {
 }
 
 function restoreAccountWindowState() {
+  clearTimeout(magnetMoveSettleTimer);
+  magnetMoveSettleTimer = null;
+  magnetUserMoveActive = false;
   const savedState = loadWindowState(windowStatePath(), DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE);
   if (mainWindow && !mainWindow.isDestroyed() && savedState.hasPosition) {
     const rememberedBounds = {
@@ -774,10 +787,16 @@ function restoreAccountWindowState() {
     const edge = display && displayPreferences.magneticEnabled && isMagnetEdge(savedState.magnetEdge)
       ? savedState.magnetEdge
       : null;
-    const expandedBounds = edge ? snapExpandedBounds(rememberedBounds, display.workArea, edge) : rememberedBounds;
+    const scaledBounds = scaleBoundsForDisplay(
+      rememberedBounds,
+      savedState.displayScaleFactor,
+      display?.scaleFactor
+    );
+    const expandedBounds = edge ? snapExpandedBounds(scaledBounds, display.workArea, edge) : scaledBounds;
     magnetState = {
       edge,
       displayId: display?.id ?? savedState.displayId ?? null,
+      displayScaleFactor: normalizeScaleFactor(display?.scaleFactor) || savedState.displayScaleFactor || null,
       expanded: true,
       expandedBounds,
       meterSide: resolveMeterSide(edge, "left")
@@ -789,6 +808,7 @@ function restoreAccountWindowState() {
     magnetState = {
       edge: null,
       displayId: null,
+      displayScaleFactor: null,
       expanded: true,
       expandedBounds: currentBounds,
       meterSide: resolveMeterSide(null, "left")
@@ -1249,15 +1269,45 @@ function resolveMeterSide(edge, fallback = "left") {
   return meterSideForEdge(edge, fallback);
 }
 
-function magnetDisplay(bounds = mainWindow?.getBounds() || magnetState.expandedBounds) {
+function sameDisplayId(left, right) {
+  return left !== null && left !== undefined && right !== null && right !== undefined && String(left) === String(right);
+}
+
+function magnetDisplay(bounds = mainWindow?.getBounds() || magnetState.expandedBounds, options = {}) {
   const displays = screen.getAllDisplays();
-  return resolveDisplayForBounds(displays, bounds, magnetState.displayId) || screen.getPrimaryDisplay();
+  const hysteresis = Object.hasOwn(options, "hysteresis")
+    ? Math.max(0, Number(options.hysteresis) || 0)
+    : MAGNET_DISPLAY_HYSTERESIS;
+  return resolveDisplayForBounds(displays, bounds, magnetState.displayId, { hysteresis }) || screen.getPrimaryDisplay();
+}
+
+function reconcileMagnetDisplay(bounds, display, options = {}) {
+  if (!display) return { bounds: bounds ? { ...bounds } : bounds, changed: false, scaleChanged: false };
+  const previousId = magnetState.displayId;
+  const previousScale = normalizeScaleFactor(magnetState.displayScaleFactor);
+  const nextScale = normalizeScaleFactor(display.scaleFactor);
+  const displayChanged = previousId !== null && previousId !== undefined && !sameDisplayId(previousId, display.id);
+  const scaleChanged = Boolean(previousScale && nextScale && Math.abs(previousScale - nextScale) >= 0.0001);
+  const shouldScale = options.scale !== false && previousScale && nextScale &&
+    (displayChanged || scaleChanged);
+  const normalizedBounds = shouldScale
+    ? scaleBoundsForDisplay(bounds, previousScale, nextScale, options.anchor || "center")
+    : (bounds ? { ...bounds } : bounds);
+  magnetState.displayId = display.id;
+  magnetState.displayScaleFactor = nextScale || previousScale || null;
+  return {
+    bounds: normalizedBounds,
+    changed: displayChanged,
+    scaleChanged: shouldScale
+  };
 }
 
 function magnetRuntimePayload() {
   return {
     enabled: magnetEnabled(),
     edge: magnetState.edge,
+    displayId: magnetState.displayId,
+    displayScaleFactor: magnetState.displayScaleFactor,
     expanded: magnetState.expanded,
     meterSide: magnetState.meterSide
   };
@@ -1376,9 +1426,10 @@ function dockMainWindow(edge, sourceBounds = mainWindow?.getBounds(), options = 
   if (!magnetEnabled() || !isMagnetEdge(edge) || !sourceBounds || !mainWindow || mainWindow.isDestroyed()) return false;
   cancelMagnetRetract();
   stopMagnetAnimation();
-  const display = magnetDisplay(sourceBounds);
+  const display = options.display || magnetDisplay(sourceBounds);
   magnetState.edge = edge;
   magnetState.displayId = display.id;
+  magnetState.displayScaleFactor = normalizeScaleFactor(display.scaleFactor) || magnetState.displayScaleFactor || null;
   magnetState.expandedBounds = snapExpandedBounds(sourceBounds, display.workArea, edge);
   magnetState.expanded = options.collapsed !== true;
   magnetState.meterSide = resolveMeterSide(edge, magnetState.meterSide);
@@ -1392,8 +1443,12 @@ function dockMainWindow(edge, sourceBounds = mainWindow?.getBounds(), options = 
 function undockMainWindow(bounds = mainWindow?.getBounds()) {
   cancelMagnetRetract();
   stopMagnetAnimation();
+  clearTimeout(magnetMoveSettleTimer);
+  magnetMoveSettleTimer = null;
+  magnetUserMoveActive = false;
   magnetState.edge = null;
   magnetState.displayId = null;
+  magnetState.displayScaleFactor = null;
   magnetState.expanded = true;
   magnetState.expandedBounds = bounds ? { ...bounds } : magnetState.expandedBounds;
   notifyMagnetState();
@@ -1418,27 +1473,45 @@ function setMagneticEnabled(value) {
   const bounds = mainWindow?.getBounds();
   if (bounds) {
     const display = magnetDisplay(bounds);
-    const edge = chooseSnapEdge(bounds, display.workArea, {
+    const reconciled = reconcileMagnetDisplay(bounds, display);
+    const nextBounds = reconciled.bounds || bounds;
+    magnetState.expandedBounds = nextBounds;
+    const edge = chooseSnapEdge(nextBounds, display.workArea, {
       threshold: MAGNET_SNAP_DISTANCE,
       cornerHysteresis: MAGNET_CORNER_HYSTERESIS,
       previousEdge: magnetState.edge
     });
-    if (edge) dockMainWindow(edge, bounds);
+    if (edge) dockMainWindow(edge, nextBounds, { display });
+    else if (reconciled.scaleChanged) setMainWindowBoundsProgrammatically(nextBounds);
   }
   return true;
 }
 
+function scheduleMagnetMoveFinished() {
+  clearTimeout(magnetMoveSettleTimer);
+  magnetMoveSettleTimer = setTimeout(() => {
+    magnetMoveSettleTimer = null;
+    handleMagnetMoveFinished();
+  }, 180);
+}
+
 function handleMagnetMoveFinished() {
   if (!magnetEnabled() || magnetProgrammaticMove || !mainWindow || mainWindow.isDestroyed()) return;
+  magnetUserMoveActive = false;
   const bounds = mainWindow.getBounds();
   const display = magnetDisplay(bounds);
-  const edge = chooseSnapEdge(bounds, display.workArea, {
+  const reconciled = reconcileMagnetDisplay(bounds, display);
+  const nextBounds = reconciled.bounds || bounds;
+  const edge = chooseSnapEdge(nextBounds, display.workArea, {
     threshold: MAGNET_SNAP_DISTANCE,
     cornerHysteresis: MAGNET_CORNER_HYSTERESIS,
     previousEdge: magnetState.edge
   });
-  if (edge) dockMainWindow(edge, bounds);
-  else undockMainWindow(bounds);
+  if (edge) dockMainWindow(edge, nextBounds, { display });
+  else {
+    if (reconciled.scaleChanged) setMainWindowBoundsProgrammatically(nextBounds);
+    undockMainWindow(nextBounds);
+  }
 }
 
 function updateMagnetGeometry(value) {
@@ -1485,9 +1558,11 @@ function reanchorMagnetWindow() {
     ensureMainWindowVisible();
     return;
   }
+  clearTimeout(magnetMoveSettleTimer);
+  magnetMoveSettleTimer = null;
   const display = magnetDisplay(mainWindow?.getBounds() || magnetState.expandedBounds);
-  magnetState.displayId = display.id;
-  magnetState.expandedBounds = snapExpandedBounds(magnetState.expandedBounds, display.workArea, magnetState.edge);
+  const reconciled = reconcileMagnetDisplay(magnetState.expandedBounds, display);
+  magnetState.expandedBounds = snapExpandedBounds(reconciled.bounds || magnetState.expandedBounds, display.workArea, magnetState.edge);
   if (magnetState.expanded) setMainWindowBoundsProgrammatically(magnetState.expandedBounds);
   else collapseMagnetWindow({ immediate: true });
   saveWindowState(mainWindow, windowStatePath());
@@ -1500,8 +1575,17 @@ function createWindow() {
     const rememberedBounds = { x: savedState.x, y: savedState.y, width: savedState.width, height: savedState.height };
     const display = resolveDisplayForBounds(screen.getAllDisplays(), rememberedBounds, savedState.displayId);
     if (display) {
-      const recovered = snapExpandedBounds(rememberedBounds, display.workArea, savedState.magnetEdge);
-      Object.assign(savedState, recovered, { hasPosition: true, displayId: display.id });
+      const scaledBounds = scaleBoundsForDisplay(
+        rememberedBounds,
+        savedState.displayScaleFactor,
+        display.scaleFactor
+      );
+      const recovered = snapExpandedBounds(scaledBounds, display.workArea, savedState.magnetEdge);
+      Object.assign(savedState, recovered, {
+        hasPosition: true,
+        displayId: display.id,
+        displayScaleFactor: normalizeScaleFactor(display.scaleFactor) || savedState.displayScaleFactor
+      });
     }
   }
   const windowOptions = {
@@ -1530,6 +1614,7 @@ function createWindow() {
   magnetState = {
     edge: magnetEnabled() && isMagnetEdge(savedState.magnetEdge) ? savedState.magnetEdge : null,
     displayId: savedState.displayId,
+    displayScaleFactor: savedState.displayScaleFactor,
     expanded: !(magnetEnabled() && isMagnetEdge(savedState.magnetEdge)),
     expandedBounds: savedState.hasPosition
       ? { x: savedState.x, y: savedState.y, width: savedState.width, height: savedState.height }
@@ -1542,29 +1627,39 @@ function createWindow() {
     scheduleMainWindowStateSave();
   });
   mainWindow.on("will-move", () => {
-    if (!magnetEnabled()) return;
+    if (!magnetEnabled() || magnetProgrammaticMove) return;
     cancelMagnetRetract();
     stopMagnetAnimation();
+    clearTimeout(magnetMoveSettleTimer);
+    magnetMoveSettleTimer = null;
+    magnetUserMoveActive = true;
     magnetState.expanded = true;
     notifyMagnetState();
   });
   mainWindow.on("move", () => {
     if (!magnetProgrammaticMove && magnetState.expanded) {
+      magnetUserMoveActive = true;
       magnetState.expandedBounds = mainWindow.getBounds();
-      clearTimeout(magnetMoveSettleTimer);
-      magnetMoveSettleTimer = setTimeout(handleMagnetMoveFinished, 180);
+      scheduleMagnetMoveFinished();
     }
     scheduleMainWindowStateSave();
   });
-  mainWindow.on("moved", handleMagnetMoveFinished);
-  mainWindow.on("close", () => saveWindowState(mainWindow, windowStatePath()));
+  mainWindow.on("moved", () => {
+    if (!magnetProgrammaticMove && magnetUserMoveActive) scheduleMagnetMoveFinished();
+  });
+  mainWindow.on("close", () => {
+    clearTimeout(magnetMoveSettleTimer);
+    magnetMoveSettleTimer = null;
+    magnetUserMoveActive = false;
+    saveWindowState(mainWindow, windowStatePath());
+  });
 
   mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   mainWindow.once("ready-to-show", () => {
     if (magnetState.edge && magnetState.expandedBounds) {
       const display = magnetDisplay(magnetState.expandedBounds);
-      magnetState.displayId = display.id;
-      magnetState.expandedBounds = snapExpandedBounds(magnetState.expandedBounds, display.workArea, magnetState.edge);
+      const reconciled = reconcileMagnetDisplay(magnetState.expandedBounds, display);
+      magnetState.expandedBounds = snapExpandedBounds(reconciled.bounds || magnetState.expandedBounds, display.workArea, magnetState.edge);
       notifyMagnetState();
       const target = magnetCollapsedBounds();
       if (target) setMainWindowBoundsProgrammatically(target);

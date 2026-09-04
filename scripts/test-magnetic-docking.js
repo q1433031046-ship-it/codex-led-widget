@@ -7,8 +7,10 @@ const {
   collapsedBounds,
   constrainBoundsToWorkArea,
   meterSideForEdge,
+  normalizeScaleFactor,
   pointInRect,
   resolveDisplayForBounds,
+  scaleBoundsForDisplay,
   snapExpandedBounds
 } = require("../src/main/magnet-controller");
 
@@ -67,6 +69,51 @@ assert.deepEqual(
   "oversized windows are reduced to the target work area"
 );
 
+assert.equal(normalizeScaleFactor(1), 1);
+assert.equal(normalizeScaleFactor(1.5), 1.5);
+assert.equal(normalizeScaleFactor(0.1), null);
+assert.equal(normalizeScaleFactor(9), null);
+assert.deepEqual(
+  scaleBoundsForDisplay({ x: 800, y: 300, width: 400, height: 200 }, 1, 1.5),
+  { x: 867, y: 334, width: 267, height: 133 },
+  "scale conversion preserves the window center"
+);
+assert.deepEqual(
+  scaleBoundsForDisplay({ x: 800, y: 300, width: 400, height: 200 }, 1, 1.5, "left"),
+  { x: 800, y: 334, width: 267, height: 133 },
+  "left anchor keeps the dock edge stable during scale conversion"
+);
+assert.deepEqual(
+  scaleBoundsForDisplay({ x: 800, y: 300, width: 400, height: 200 }, 1, 1),
+  { x: 800, y: 300, width: 400, height: 200 },
+  "equal scales do not move the window"
+);
+const scaled = scaleBoundsForDisplay({ x: 800, y: 300, width: 400, height: 200 }, 1, 1.5);
+const restored = scaleBoundsForDisplay(scaled, 1.5, 1);
+assert.ok(Math.abs(restored.width - 400) <= 1 && Math.abs(restored.height - 200) <= 1, "scale conversion is reversible within rounding");
+
+const seamDisplays = [
+  { id: "left", bounds: { x: 0, y: 0, width: 1920, height: 1080 } },
+  { id: "right", bounds: { x: 1920, y: 0, width: 2560, height: 1440 } }
+];
+for (const centerX of [1920, 1930, 1967]) {
+  assert.equal(
+    resolveDisplayForBounds(seamDisplays, { x: centerX - 50, y: 300, width: 100, height: 100 }, "left", { hysteresis: 48 }).id,
+    "left",
+    `remembered display remains sticky at seam center ${centerX}`
+  );
+}
+assert.equal(
+  resolveDisplayForBounds(seamDisplays, { x: 1968 - 50, y: 300, width: 100, height: 100 }, "left", { hysteresis: 48 }).id,
+  "right",
+  "display switches only after the hysteresis band is crossed"
+);
+assert.equal(
+  resolveDisplayForBounds(seamDisplays, { x: 2100 - 50, y: 300, width: 100, height: 100 }, "left", { hysteresis: 48 }).id,
+  "right",
+  "a clearly crossed seam selects the new display"
+);
+
 const mainSource = fs.readFileSync(path.join(__dirname, "..", "src", "main", "main.js"), "utf8");
 const rendererSource = fs.readFileSync(path.join(__dirname, "..", "src", "renderer", "renderer.js"), "utf8");
 const preloadSource = fs.readFileSync(path.join(__dirname, "..", "src", "main", "preload.js"), "utf8");
@@ -80,6 +127,11 @@ assert.match(mainSource, /requestSingleInstanceLock/);
 assert.match(mainSource, /app\.on\("second-instance"/);
 assert.match(mainSource, /geometryChanged/);
 assert.match(mainSource, /currentBounds\.x === nextBounds\.x/);
+assert.match(mainSource, /MAGNET_DISPLAY_HYSTERESIS/);
+assert.match(mainSource, /displayScaleFactor/);
+assert.match(mainSource, /scaleBoundsForDisplay/);
+assert.match(mainSource, /scheduleMagnetMoveFinished/);
+assert.doesNotMatch(mainSource, /mainWindow\.on\("moved", handleMagnetMoveFinished\)/);
 assert.match(settingsSource, /仪表位置/);
 assert.match(mainSource, /resolveMeterSide/);
 assert.match(rendererSource, /magnetMeterOnly/);

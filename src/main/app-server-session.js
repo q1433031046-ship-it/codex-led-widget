@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const DEFAULT_TIMEOUT_MS = 30000;
-const CLIENT_VERSION = "1.2.2";
+const CLIENT_VERSION = "1.2.3";
 
 function findVersionedCodexExecutables(binRoot) {
   try {
