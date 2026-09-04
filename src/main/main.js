@@ -1429,13 +1429,27 @@ function cancelMagnetRetract() {
 function expandMagnetWindow(options = {}) {
   if (!magnetEnabled() || !magnetState.edge || !magnetState.expandedBounds) return;
   cancelMagnetRetract();
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+    // Wake the renderer before the native bounds animation starts. The
+    // collapsed strip remains the only painted area until the window settles.
+    mainWindow.webContents.send("window:magnetWillExpand");
+  }
   magnetState.expanded = true;
   notifyMagnetState();
   if (!mainWindow.isVisible()) mainWindow.showInactive();
   applyAlwaysOnTop();
   const duration = options.immediate ? 1 : MAGNET_ANIMATION_MS;
-  setMainWindowShape("collapsed");
-  animateMainWindowTo(magnetState.expandedBounds, duration, () => setMainWindowShape("expanded"));
+  // Reveal the full local surface before moving the window. Keeping the
+  // collapsed shape during this animation masks the prewarmed frame until
+  // the final tick, which is the visible hover delay users notice.
+  setMainWindowShape("expanded");
+  const startAnimation = () => {
+    if (!magnetState.expanded || !mainWindow || mainWindow.isDestroyed()) return;
+    animateMainWindowTo(magnetState.expandedBounds, duration, () => setMainWindowShape("expanded"));
+  };
+  // Give the renderer one event-loop turn to paint the prewarmed frame.
+  if (duration <= 1) startAnimation();
+  else setTimeout(startAnimation, 0);
 }
 
 function collapseMagnetWindow(options = {}) {

@@ -54,6 +54,9 @@ contextBridge.exposeInMainWorld("codexQuota", {
   onMagnetStateChanged: (callback) => {
     ipcRenderer.on("window:magnetStateChanged", (_event, value) => callback(value));
   },
+  onMagnetWillExpand: (callback) => {
+    ipcRenderer.on("window:magnetWillExpand", callback);
+  },
   onSettingsStateChanged: (callback) => {
     ipcRenderer.on("settings:stateChanged", (_event, value) => callback(value));
   },

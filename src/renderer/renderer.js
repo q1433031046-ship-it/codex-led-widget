@@ -222,6 +222,7 @@ let liquidAnimationFrame = null;
 let liquidAnimationStarted = false;
 let liquidFrameInProgress = false;
 let lastLiquidPaintAt = null;
+let magnetPrewarming = false;
 
 const MAX_STORED_METER_SIZE = 4096;
 const MIN_METER_SIZE = 19.2;
@@ -341,12 +342,14 @@ function applyDisplayPreferences(value) {
 
 function applyMagnetState(value) {
   const wasActive = isRendererRenderActive();
+  const nextExpanded = value?.expanded !== false;
   magnetRuntime = {
     enabled: Boolean(value?.enabled),
     edge: ["left", "right", "top", "bottom"].includes(value?.edge) ? value.edge : null,
-    expanded: value?.expanded !== false,
+    expanded: nextExpanded,
     meterSide: value?.meterSide === "right" ? "right" : "left"
   };
+  if (nextExpanded) magnetPrewarming = false;
   updateLayoutMode();
   if (!wasActive && isRendererRenderActive() && (lastQuota || lastError)) render();
 }
@@ -354,9 +357,9 @@ function applyMagnetState(value) {
 function isRendererRenderActive() {
   return window.resourcePolicy?.isRenderActive({
     hidden: document.hidden,
-    expanded: !magnetRuntime.enabled || !magnetRuntime.edge || magnetRuntime.expanded,
+    expanded: magnetPrewarming || !magnetRuntime.enabled || !magnetRuntime.edge || magnetRuntime.expanded,
     hasVisuals: true
-  }) ?? (!document.hidden && (!magnetRuntime.enabled || !magnetRuntime.edge || magnetRuntime.expanded));
+  }) ?? (!document.hidden && (magnetPrewarming || !magnetRuntime.enabled || !magnetRuntime.edge || magnetRuntime.expanded));
 }
 
 function isLiquidAnimationActive() {
@@ -1560,6 +1563,11 @@ window.codexQuota.onQuotaRefreshFailed((message) => {
 });
 window.codexQuota.onToggleLanguage(toggleLanguage);
 window.codexQuota.onDisplayPreferencesChanged(applyDisplayPreferences);
+window.codexQuota.onMagnetWillExpand?.(() => {
+  magnetPrewarming = true;
+  updateAnimationActivity();
+  if (lastQuota || lastError) render();
+});
 window.codexQuota.onMagnetStateChanged(applyMagnetState);
 window.codexQuota.onAlwaysOnTopChanged((value) => {
   alwaysOnTop = Boolean(value);
