@@ -1440,15 +1440,20 @@ function dockMainWindow(edge, sourceBounds = mainWindow?.getBounds(), options = 
   return true;
 }
 
-function undockMainWindow(bounds = mainWindow?.getBounds()) {
+function undockMainWindow(bounds = mainWindow?.getBounds(), options = {}) {
   cancelMagnetRetract();
   stopMagnetAnimation();
   clearTimeout(magnetMoveSettleTimer);
   magnetMoveSettleTimer = null;
   magnetUserMoveActive = false;
   magnetState.edge = null;
-  magnetState.displayId = null;
-  magnetState.displayScaleFactor = null;
+  if (options.preserveDisplay !== true) {
+    magnetState.displayId = null;
+    magnetState.displayScaleFactor = null;
+  } else if (options.display) {
+    magnetState.displayId = options.display.id;
+    magnetState.displayScaleFactor = normalizeScaleFactor(options.display.scaleFactor) || magnetState.displayScaleFactor || null;
+  }
   magnetState.expanded = true;
   magnetState.expandedBounds = bounds ? { ...bounds } : magnetState.expandedBounds;
   notifyMagnetState();
@@ -1510,7 +1515,7 @@ function handleMagnetMoveFinished() {
   if (edge) dockMainWindow(edge, nextBounds, { display });
   else {
     if (reconciled.scaleChanged) setMainWindowBoundsProgrammatically(nextBounds);
-    undockMainWindow(nextBounds);
+    undockMainWindow(nextBounds, { preserveDisplay: true, display });
   }
 }
 

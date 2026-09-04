@@ -131,6 +131,7 @@ assert.match(mainSource, /MAGNET_DISPLAY_HYSTERESIS/);
 assert.match(mainSource, /displayScaleFactor/);
 assert.match(mainSource, /scaleBoundsForDisplay/);
 assert.match(mainSource, /scheduleMagnetMoveFinished/);
+assert.match(mainSource, /preserveDisplay/);
 assert.doesNotMatch(mainSource, /mainWindow\.on\("moved", handleMagnetMoveFinished\)/);
 assert.match(settingsSource, /仪表位置/);
 assert.match(mainSource, /resolveMeterSide/);
