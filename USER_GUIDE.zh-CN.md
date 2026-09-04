@@ -25,7 +25,7 @@ Codex 额度桌面助手是一款 Windows 桌面悬浮工具，用于查看 Code
 ### 下载
 
 1. 打开 [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases)。
-2. 进入最新版本，下载 `Codex-Quota-Desktop-Assistant-1.2.3-Windows-x64-Setup.exe`。
+2. 进入最新版本，下载 `Codex-Quota-Desktop-Assistant-1.2.4-Windows-x64-Setup.exe`。
 3. 双击安装程序完成安装。安装后的应用会直接从安装目录运行，不会在每次启动时向临时目录解压完整程序。
 
 当前程序没有商业代码签名。如果 Windows 首次运行时显示“未知发布者”，请先确认文件来自本仓库，然后选择“更多信息 → 仍要运行”。

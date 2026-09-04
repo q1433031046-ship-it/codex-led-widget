@@ -31,7 +31,7 @@
 - 统计页内有独立的“模型与价格设置”：可重新扫描 Codex 模型、刷新官方价格、手动覆盖单个模型的四项单价并恢复官方自动更新；未来 Codex 出现新模型时会自动进入列表，代码层也保留可注册的价格来源接口。
 - GPT/GitHub 风格的格子消耗日历：单月模式使用放大的 7 列日期格；多月模式是一条可左右拖动、跨年份首尾连续并按需延伸的每日格子时间线，选中月份默认居中高亮、相邻月份自动降低亮度；年视图可在“12个月大格”和“全年每日小格”间切换；悬停可查看当前消耗，单位支持总额度%、Token、美元、人民币。
 - 消耗图在关闭期间仍持续记录，重新开启或重启应用不会清空同一额度周期的历史。
-- 统计页秒开最近一次完整结果；应用在后台每 60 秒统一刷新，避免打开页面时重复扫描。
+- 统计页优先显示最近一次完整结果；额度在后台每 60 秒刷新，本机模型用量每 5 分钟扫描，查看时按缓存时效更新。隐藏或收起时暂停动画和图表重绘，辅助窗口长时间隐藏后释放。
 - 右键菜单改为扁平快捷菜单，常用的显示/隐藏、刷新、置顶、统计和设置都可直接点击，不再通过会闪烁或错位的多层原生子菜单操作。
 - 独立设置窗口集中管理额度来源、仪表、卡片、图表、统计和成本显示；修改即时保存，5 小时/7 天高级选项按需展开，重复打开只复用同一个设置窗口。
 - 设置页的“悬浮窗卡片”提供独立总开关：关闭时只隐藏已勾选卡片，不改变各卡片的勾选组合；重新开启时只恢复原来勾选的卡片。无卡片时圆球、横向电池和竖向电池会随窗口空间自适应到合理尺寸。
@@ -48,7 +48,7 @@
 ## 下载与使用
 
 1. 打开仓库的 [Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases) 页面。
-2. 下载 `Codex-Quota-Desktop-Assistant-1.2.3-Windows-x64-Setup.exe`。
+2. 下载 `Codex-Quota-Desktop-Assistant-1.2.4-Windows-x64-Setup.exe`。
 3. 确认 Windows 版 Codex 已安装，然后双击安装；如本机登录状态不可用，首次启动会自动打开官方登录页。
 4. 右键悬浮窗或系统托盘图标打开快捷菜单，再选择“设置”进入完整设置窗口。
 
@@ -92,15 +92,15 @@ pnpm run dev
 pnpm run release
 ```
 
-输出位于 `dist/Codex-Quota-Desktop-Assistant-1.2.3-Windows-x64-Setup.exe`。安装后的程序直接从安装目录运行，不会在每次启动时向临时目录解压完整副本。
+输出位于 `dist/Codex-Quota-Desktop-Assistant-1.2.4-Windows-x64-Setup.exe`。安装后的程序直接从安装目录运行，不会在每次启动时向临时目录解压完整副本。
 
 ## GitHub 发布
 
 正式版本由维护者在本地完成检查和构建，再将唯一的 Windows `.exe` 上传到 GitHub Releases。
 
 ```powershell
-git tag v1.2.3
-git push origin v1.2.3
+git tag v1.2.4
+git push origin v1.2.4
 ```
 
 ## 项目结构
@@ -122,7 +122,7 @@ scripts/                 visual and behavior checks
 
 Codex Quota Desktop Assistant is a customizable Windows desktop assistant for Codex quota monitoring. It classifies quota windows by the server-provided duration, supports selectable quota sources, and includes resizable orb and battery meters, local quota history, token and estimated API cost statistics, and a GitHub-style contribution calendar.
 
-The statistics page opens from the last complete local snapshot and shares one fixed 60-second background refresh with the widget. Optional four-edge magnetic docking starts retracting immediately after pointer leave and restores the widget on hover. Window size, position, layout, and display preferences are remembered locally.
+The statistics page opens from the last complete local snapshot. Quota refreshes every 60 seconds; local model usage scans every 5 minutes with freshness-aware refresh on viewing. Hidden or retracted widgets pause animation and chart repainting. Optional four-edge magnetic docking starts retracting immediately after pointer leave and restores the widget on hover. Window size, position, layout, and display preferences are remembered locally.
 
 ### Attribution
 
@@ -130,7 +130,7 @@ This project is a derivative of [xicunwus2025-sys/codex-led-widget](https://gith
 
 ### Download
 
-Download `Codex-Quota-Desktop-Assistant-1.2.3-Windows-x64-Setup.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed Codex app are required. First run safely recovers broken legacy docking coordinates and opens the official browser login when needed. The installed app runs directly from its installation directory instead of unpacking a portable copy on every launch. A newer official release triggers one notification per version.
+Download `Codex-Quota-Desktop-Assistant-1.2.4-Windows-x64-Setup.exe` from [GitHub Releases](https://github.com/q1433031046-ship-it/codex-led-widget/releases). Windows 10/11 x64 and an installed Codex app are required. First run safely recovers broken legacy docking coordinates and opens the official browser login when needed. The installed app runs directly from its installation directory instead of unpacking a portable copy on every launch. A newer official release triggers one notification per version.
 
 ### Privacy
 
